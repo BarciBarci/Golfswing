@@ -6,6 +6,17 @@ The app is a pure **static website** (HTML/CSS/JavaScript, no build step) – it
 runs locally in the browser, on desktop as well as on iPhone/iPad (iOS) and
 Android. **Nothing is uploaded**; all data stays on your device.
 
+This Project it completely KI Generated with Deepseek V4 flash (paid). 
+The german prompt was 
+
+"Ich möchte eine golf schwunganalyse webapp schreiben, die sowohl von einem PC als auch einen handy (ios, Android) aufgerugen wird. Diese app soll spärer bei github hochgelanden werden und auch lokal laufen. Ziel ist eine Aufnahme eines Golfschwunges zu laden und mittels langsamer abspielen kombiniert mit auf den film überlagerter Linien und Kreise sehen zu können, ob die körperhalung richtig ist. Also nunächst muss man einen film öffnen. Den kann man dan un unterschiedlichen geschwindigkeiten (0,1 - 1 - fach) abspielen. unten soll auch ein sleider sein. Jederzeit kann man auf diesem Film gerade linien oder Kreise un unterschielidchen farben hinzufügen. diese sollen den Film überlagert sein."
+
+and 
+
+"zwei änderungswünsche: 1. den slider für die Zeit direkt unter dem video anordnen. Die Bedienung von linie und kreis kleiner und in einer zeile, so dass mehr von dem video sichtbar ist."
+
+
+
 ## Features
 
 - 📂 **Open video** by click or drag & drop (MP4/WebM/MOV, etc.)
