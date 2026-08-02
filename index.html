@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="description" content="Golf-Schwunganalyse: Video langsam abspielen und Linien/Kreise zur Haltungskontrolle überlagern.">
+<title>Golf-Schwunganalyse</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>⛳ Golf-Schwunganalyse</h1>
+  <button id="new-video-btn" class="btn ghost" hidden>Neues Video</button>
+</header>
+
+<!-- ===== Startbildschirm: Video laden ===== -->
+<section id="upload-screen" class="upload-screen">
+  <div id="drop-zone" class="drop-zone">
+    <div class="drop-zone-icon">🎥</div>
+    <p class="drop-zone-title">Golf-Schwung-Video öffnen</p>
+    <p class="drop-zone-hint">
+      Video hierher ziehen oder über die Schaltfläche auswählen.<br>
+      Alles läuft lokal in deinem Browser – es wird nichts hochgeladen.
+    </p>
+    <input type="file" id="video-input" accept="video/*" hidden>
+    <button class="btn primary" id="choose-file-btn">Video auswählen</button>
+  </div>
+</section>
+
+<!-- ===== Player ===== -->
+<section id="player-screen" class="player-screen" hidden>
+  <div class="player-grid">
+
+    <div class="player-main">
+      <!-- Bühne: Video + Overlay-Canvas + Werkzeugleiste -->
+      <div id="stage" class="stage">
+        <video id="video" playsinline preload="metadata"></video>
+        <canvas id="overlay"></canvas>
+
+        <div id="toolbar" class="toolbar">
+          <button class="tool-btn active" id="tool-line" title="Linie zeichnen (Taste L)" aria-pressed="true">📏</button>
+          <button class="tool-btn" id="tool-circle" title="Kreis zeichnen (Taste C)" aria-pressed="false">⭕</button>
+          <span class="tool-divider" aria-hidden="true"></span>
+          <div class="tool-group" id="color-row" title="Farbe wählen"></div>
+          <span class="tool-divider" aria-hidden="true"></span>
+          <button class="tool-btn" id="undo-btn" title="Letzte Überlagerung rückgängig (Strg+Z)">↩</button>
+        </div>
+
+        <div id="draw-hint" class="draw-hint"></div>
+      </div>
+
+      <!-- Slider (Zeitleiste) direkt unter dem Video -->
+      <div class="scrubber-row">
+        <input type="range" id="scrubber" min="0" max="1000" step="1" value="0" aria-label="Zeitleiste">
+      </div>
+
+      <!-- Transport -->
+      <div class="transport">
+        <button class="tool-btn" id="step-back" title="Ein Bild zurück (←)">⏮</button>
+        <button class="btn primary big" id="play-pause" title="Abspielen / Pause (Leertaste)">▶</button>
+        <button class="tool-btn" id="step-fwd" title="Ein Bild vor (→)">⏭</button>
+        <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
+      </div>
+
+      <!-- Geschwindigkeit -->
+      <div class="speed-row">
+        <label for="speed-slider">Tempo</label>
+        <input type="range" id="speed-slider" min="0.1" max="1" step="0.05" value="1">
+        <span id="speed-value" class="speed-value">1,00×</span>
+        <div class="speed-chips">
+          <button class="chip" data-speed="0.1">0,1×</button>
+          <button class="chip" data-speed="0.25">0,25×</button>
+          <button class="chip" data-speed="0.5">0,5×</button>
+          <button class="chip active" data-speed="1">1×</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Überlagerungs-Liste -->
+    <aside class="overlay-panel">
+      <button id="overlay-toggle" class="overlay-toggle" aria-expanded="false">Überlagerungen (0) ▸</button>
+      <div id="overlay-content" class="overlay-content hidden">
+        <p id="overlay-empty" class="overlay-empty">
+          Noch keine Überlagerungen.<br>
+          Wähle 📏 Linie oder ⭕ Kreis und zeichne direkt auf dem Video.<br><br>
+          <em>Tipp:</em> In der Liste kannst du pro Linie/Kreis ein Zeitfenster (von/bis)
+          setzen, damit sie nur in einem bestimmten Schwungabschnitt erscheint.
+        </p>
+        <ul id="overlay-list"></ul>
+        <div class="overlay-actions">
+          <button id="export-btn" class="btn ghost">Exportieren</button>
+          <button id="import-btn" class="btn ghost">Importieren</button>
+          <button id="clear-all-btn" class="btn ghost danger">Alle löschen</button>
+          <input type="file" id="import-input" accept=".json,application/json" hidden>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+<footer class="app-footer">
+  <p>Läuft komplett lokal im Browser – dein Video und deine Überlagerungen verlassen dein Gerät nicht.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
