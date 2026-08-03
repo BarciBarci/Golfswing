@@ -23,6 +23,7 @@ const stage = $('stage');
 
 const toolLineBtn = $('tool-line');
 const toolCircleBtn = $('tool-circle');
+const toolMoveBtn = $('tool-move');
 const undoBtn = $('undo-btn');
 const drawHint = $('draw-hint');
 
@@ -58,6 +59,8 @@ const state = {
   lineCount: 0,
   circleCount: 0,
   drawing: null,         // aktuell gezeichnetes Overlay (Vorschau)
+  drag: null,            // aktueller Drag {overlayId, handle, startPoint, startPts}
+  hover: null,           // Overlay-Id unter dem Mauszeiger (Verschieben-Modus)
   pointerId: null,
   fps: 30,               // für Einzelbild-Schritt
   ar: 16 / 9,            // Video-Seitenverhältnis
@@ -154,6 +157,8 @@ function resetOverlays() {
   state.lineCount = 0;
   state.circleCount = 0;
   state.drawing = null;
+  state.drag = null;
+  state.hover = null;
   state.pointerId = null;
   renderOverlayList();
 }
@@ -208,17 +213,25 @@ function setTool(t) {
   cancelDrawing();
   toolLineBtn.classList.toggle('active', t === 'line');
   toolCircleBtn.classList.toggle('active', t === 'circle');
+  toolMoveBtn.classList.toggle('active', t === 'move');
   toolLineBtn.setAttribute('aria-pressed', t === 'line');
   toolCircleBtn.setAttribute('aria-pressed', t === 'circle');
+  toolMoveBtn.setAttribute('aria-pressed', t === 'move');
+  canvas.style.cursor = t === 'move' ? 'grab' : 'crosshair';
   drawHint.textContent =
     t === 'line'
       ? 'Linie: auf das Video tippen/ziehen – Startpunkt bis Loslassen'
-      : 'Kreis: auf das Video tippen/ziehen – Mitte bis Radius';
+      : t === 'circle'
+        ? 'Kreis: auf das Video tippen/ziehen – Mitte bis Radius'
+        : 'Verschieben: Griff antippen – oder ganze Linie/Kreis packen und ziehen';
+  state.hover = null;
+  draw();
 }
 
 function cancelDrawing() {
-  if (state.drawing) {
+  if (state.drawing || state.drag) {
     state.drawing = null;
+    state.drag = null;
     draw();
   }
 }
@@ -266,6 +279,20 @@ function onPointerDown(e) {
     /* impliziter Capture reicht */
   }
   const p = toCanvas(e);
+  if (state.tool === 'move') {
+    const hit = hitTest(p);
+    if (hit) {
+      state.drag = {
+        overlayId: hit.overlay.id,
+        handle: hit.handle, // null = ganze Form verschieben
+        startPoint: p,
+        startPts: hit.overlay.pts.map((pt) => ({ x: pt.x, y: pt.y })),
+      };
+      canvas.style.cursor = 'grabbing';
+      draw();
+    }
+    return;
+  }
   state.drawing = {
     id: state.nextId++,
     type: state.tool,
@@ -279,15 +306,50 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
-  if (state.pointerId !== e.pointerId || !state.drawing) return;
+  const p = toCanvas(e);
+  if (state.pointerId !== e.pointerId) {
+    // Hover (Maus ohne gedrückte Taste): ganze Form im Verschieben-Modus hervorheben
+    if (state.tool === 'move' && !state.drag && !state.drawing) {
+      const hit = hitTest(p);
+      const id = hit && hit.handle === null ? hit.overlay.id : null;
+      if (state.hover !== id) {
+        state.hover = id;
+        draw();
+      }
+    }
+    return;
+  }
   e.preventDefault();
-  state.drawing.pts[1] = toCanvas(e);
-  draw();
+  if (state.drag) {
+    const o = findOverlay(state.drag.overlayId);
+    if (o) {
+      if (state.drag.handle === null) {
+        const dx = p.x - state.drag.startPoint.x;
+        const dy = p.y - state.drag.startPoint.y;
+        o.pts[0] = { x: state.drag.startPts[0].x + dx, y: state.drag.startPts[0].y + dy };
+        o.pts[1] = { x: state.drag.startPts[1].x + dx, y: state.drag.startPts[1].y + dy };
+      } else {
+        o.pts[state.drag.handle] = p;
+      }
+      draw();
+    }
+    return;
+  }
+  if (state.drawing) {
+    state.drawing.pts[1] = p;
+    draw();
+  }
 }
 
 function onPointerUp(e) {
   if (state.pointerId !== e.pointerId) return;
   state.pointerId = null;
+  if (state.drag) {
+    state.drag = null;
+    canvas.style.cursor = 'grab';
+    draw();
+    return;
+  }
   const d = state.drawing;
   state.drawing = null;
   if (d && isValid(d)) {
@@ -315,9 +377,13 @@ function draw() {
   for (const o of state.overlays) {
     if (!o.visible) continue;
     if (t < o.start || t > o.end) continue;
+    if (state.tool === 'move' && !state.drag && state.hover === o.id) {
+      paintOverlay(o, lw * 2.4, false); // Hervorhebung unter dem Cursor
+    }
     paintOverlay(o, lw, false);
   }
   if (state.drawing) paintOverlay(state.drawing, lw, true);
+  if (state.tool === 'move') drawHandles();
 }
 
 function paintOverlay(o, lw, preview) {
@@ -334,6 +400,81 @@ function paintOverlay(o, lw, preview) {
     ctx.arc(a.x, a.y, r, 0, Math.PI * 2);
   }
   ctx.stroke();
+}
+
+// ---------- Punkte verschieben ----------
+function cssToCanvas(px) {
+  const rect = canvas.getBoundingClientRect();
+  const scale = rect.width ? canvas.width / rect.width : 1;
+  return px * scale;
+}
+
+function hitTest(p) {
+  const threshold = cssToCanvas(24); // ~24 CSS-Pixel Fingertoleranz
+  const t = video.currentTime || 0;
+  // Griffe haben Vorrang vor der ganzen Form
+  let bestHandle = null;
+  let bestHandleDist = Infinity;
+  let bestWhole = null;
+  let bestWholeDist = Infinity;
+  for (const o of state.overlays) {
+    if (!o.visible || t < o.start || t > o.end) continue;
+    for (const hi of [0, 1]) {
+      const d = Math.hypot(o.pts[hi].x - p.x, o.pts[hi].y - p.y);
+      if (d < threshold && d < bestHandleDist) {
+        bestHandleDist = d;
+        bestHandle = { overlay: o, handle: hi };
+      }
+    }
+    const wd = wholeHit(p, o, threshold);
+    if (wd < bestWholeDist) {
+      bestWholeDist = wd;
+      bestWhole = { overlay: o, handle: null };
+    }
+  }
+  return bestHandle || bestWhole;
+}
+
+function wholeHit(p, o, threshold) {
+  const [a, b] = o.pts;
+  if (o.type === 'line') {
+    const d = distToSegment(p, a, b);
+    return d < threshold ? d : Infinity;
+  }
+  const r = Math.hypot(b.x - a.x, b.y - a.y);
+  const d = Math.hypot(p.x - a.x, p.y - a.y);
+  // innen oder knapp außerhalb des Kreisrands zählt als Treffer
+  return d <= r + threshold * 0.25 ? Math.abs(d - r) : Infinity;
+}
+
+function distToSegment(p, a, b) {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
+
+function drawHandles() {
+  const r = Math.max(3, cssToCanvas(6));
+  const t = video.currentTime || 0;
+  for (const o of state.overlays) {
+    if (!o.visible || t < o.start || t > o.end) continue;
+    for (const hi of [0, 1]) {
+      const p = o.pts[hi];
+      const active =
+        state.drag && state.drag.overlayId === o.id && state.drag.handle === hi;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, active ? r * 1.5 : r, 0, Math.PI * 2);
+      ctx.fillStyle = active ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
+      ctx.fill();
+      ctx.lineWidth = Math.max(1.5, cssToCanvas(1.5));
+      ctx.strokeStyle = o.color;
+      ctx.stroke();
+    }
+  }
 }
 
 // ---------- Animationsschleife (nur während Wiedergabe) ----------
@@ -552,6 +693,8 @@ function onKeydown(e) {
     setTool('line');
   } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'c') {
     setTool('circle');
+  } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'm') {
+    setTool('move');
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     undo();
@@ -588,6 +731,7 @@ function init() {
 
   toolLineBtn.addEventListener('click', () => setTool('line'));
   toolCircleBtn.addEventListener('click', () => setTool('circle'));
+  toolMoveBtn.addEventListener('click', () => setTool('move'));
   undoBtn.addEventListener('click', undo);
 
   playPauseBtn.addEventListener('click', togglePlay);
@@ -637,6 +781,12 @@ function init() {
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
+  canvas.addEventListener('pointerleave', () => {
+    if (state.hover !== null) {
+      state.hover = null;
+      draw();
+    }
+  });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   overlayToggle.addEventListener('click', () => {

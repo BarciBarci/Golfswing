@@ -1,40 +1,94 @@
-A web app for analyzing golf swings: load a swing video and play it back in
-**slow motion**. **Lines and circles in various colors** can be drawn directly
-on the video to check e.g. the spine angle, head position, or swing path.
+# ⛳ Golf-Schwunganalyse
 
-The app is a pure **static website** (HTML/CSS/JavaScript, no build step) – it
-runs locally in the browser, on desktop as well as on iPhone/iPad (iOS) and
-Android. **Nothing is uploaded**; all data stays on your device.
+> 🇬🇧 [English version](README.en.md)
 
-This Project it completely KI Generated with Deepseek V4 flash (paid). 
-The german prompt was 
+Eine Web-App zur Analyse von Golfschwüngen: Ein Schwung-Video wird geladen und
+kann in **Zeitlupe** abgespielt werden. Direkt auf dem Film lassen sich **Linien
+und Kreise in verschiedenen Farben** zeichnen, um z. B. die Wirbelsäulenachse,
+die Kopfposition oder den Schwungweg zu kontrollieren.
 
-"Ich möchte eine golf schwunganalyse webapp schreiben, die sowohl von einem PC als auch einen handy (ios, Android) aufgerugen wird. Diese app soll spärer bei github hochgelanden werden und auch lokal laufen. Ziel ist eine Aufnahme eines Golfschwunges zu laden und mittels langsamer abspielen kombiniert mit auf den film überlagerter Linien und Kreise sehen zu können, ob die körperhalung richtig ist. Also nunächst muss man einen film öffnen. Den kann man dan un unterschiedlichen geschwindigkeiten (0,1 - 1 - fach) abspielen. unten soll auch ein sleider sein. Jederzeit kann man auf diesem Film gerade linien oder Kreise un unterschielidchen farben hinzufügen. diese sollen den Film überlagert sein."
+Die App ist eine reine **statische Webseite** (HTML/CSS/JavaScript ohne
+Build-Schritt) – sie läuft lokal im Browser, auf dem PC genauso wie auf
+iPhone/iPad (iOS) und Android. Es wird **nichts hochgeladen**; alle Daten
+bleiben auf dem Gerät.
 
-and 
+## Funktionen
 
-"zwei änderungswünsche: 1. den slider für die Zeit direkt unter dem video anordnen. Die Bedienung von linie und kreis kleiner und in einer zeile, so dass mehr von dem video sichtbar ist."
+- 📂 **Video öffnen** per Klick oder Drag & Drop (MP4/WebM/MOV u. a.)
+- 🐢 **Geschwindigkeit** stufenlos von **0,1× bis 1×** (Slider + Schnellwahl: 0,1× / 0,25× / 0,5× / 1×)
+- ⏮⏭ **Einzelbild-Schritt** vor/zurück für die genaue Schwunganalyse
+- 📏 **Linien** und ⭕ **Kreise** in 9 Farben direkt auf dem Video zeichnen (Maus oder Touch)
+- 🖐 **Verschieben**: Griffpunkte (Linienenden, Kreismitte/-rand) einzeln ziehen – oder die ganze Linie bzw. den ganzen Kreis packen und verschieben (Taste `M`)
+- 👁 **Zeitfenster** pro Überlagerung (von/bis): Linien/Kreise erscheinen nur in einem bestimmten Schwungabschnitt – standardmäßig sind sie immer sichtbar
+- 🎚 **Zeitleisten-Slider** direkt unter dem Video zum Springen an jede Stelle
+- ↩ **Rückgängig**, Löschen einzeln oder alle, Sichtbarkeit pro Element
+- 💾 **Export/Import** der Überlagerungen als JSON (z. B. zum Teilen mit dem Trainer)
+- ⌨️ **Tastatur**: `Leertaste` Abspielen/Pause · `←`/`→` Einzelbild · `L`/`C`/`M` Werkzeug · `Esc` Abbruch · `Strg+Z` Rückgängig
 
+## Lokal starten
 
-
-## Features
-
-- 📂 **Open video** by click or drag & drop (MP4/WebM/MOV, etc.)
-- 🐢 **Playback speed** continuously adjustable from **0.1× to 1×** (slider + quick presets: 0.1× / 0.25× / 0.5× / 1×)
-- ⏮⏭ **Single-frame stepping** forward/backward for precise swing analysis
-- 📏 **Lines** and ⭕ **circles** in 9 colors drawn directly on the video (mouse or touch)
-- 👁 **Time window** per overlay (from/to): lines/circles only appear during a specific part of the swing – by default they are always visible
-- 🎚 **Timeline slider** directly below the video to jump to any position
-- ↩ **Undo**, delete individually or all, visibility toggle per element
-- 💾 **Export/import** overlays as JSON (e.g., to share with your coach)
-- ⌨️ **Keyboard**: `Space` play/pause · `←`/`→` single frame · `L`/`C` tool · `Esc` cancel · `Ctrl+Z` undo
-
-## Run locally
-
-Simplest: open `index.html` in your browser (double-click). Alternatively, use
-a local server:
+Am einfachsten: `index.html` im Browser öffnen (Doppelklick). Alternativ mit
+einem lokalen Server:
 
 ```sh
 # Python
 python3 -m http.server 8000
-# then open http://localhost:8000
+# dann im Browser: http://localhost:8000
+```
+
+## Auf GitHub veröffentlichen
+
+Die App braucht kein Backend und funktioniert direkt über GitHub Pages:
+
+1. Neues Repository auf GitHub anlegen (z. B. `golf-schwunganalyse`).
+2. In diesem Ordner ein Git-Repository initialisieren und pushen:
+
+   ```sh
+   git init
+   git add .
+   git commit -m "Golf-Schwunganalyse v1"
+   git branch -M main
+   git remote add origin https://github.com/DEIN-USERNAME/golf-schwunganalyse.git
+   git push -u origin main
+   ```
+
+3. Auf GitHub: **Settings → Pages → Source: Branch `main` / Ordner `/ (root)`** wählen und speichern.
+4. Die App ist dann unter `https://DEIN-USERNAME.github.io/golf-schwunganalyse/` erreichbar – auch vom Handy.
+
+## Bedienung
+
+1. **Video auswählen** (Datei bleibt lokal).
+2. Tempo unten einstellen (z. B. 0,25×), per Slider zur gewünschten Stelle springen oder ein Bild pro Schritt (`⏮`/`⏭`) navigieren.
+3. Werkzeug 📏 oder ⭕ wählen, Farbe antippen und direkt auf dem Video ziehen.
+4. In der Liste **Überlagerungen** pro Element: Zeitfenster setzen, Sichtbarkeit umschalten oder löschen.
+5. Optional: Überlagerungen als JSON **exportieren**/importieren.
+
+**Tipp für die Haltungskontrolle:** Pausiere z. B. am Top of Backswing, zeichne
+eine Linie entlang der Wirbelsäule und setze als Zeitfenster „von/bis“ eng um
+diesen Moment. So siehst du beim Abspielen genau an der richtigen Position, ob
+die Achse stimmt.
+
+## Projektstruktur
+
+```
+golf-schwunganalyse/
+├── index.html   # Aufbau der Oberfläche
+├── styles.css   # Gestaltung (dunkles Theme, mobiloptimiert)
+├── app.js       # Logik: Video, Geschwindigkeit, Zeichnen, Zeitfenster
+└── README.md
+```
+
+## Hinweise
+
+- **iOS:** Das Video wird über `playsinline` im Player angezeigt; bitte keine
+  YouTube-/Download-Links erwarten – es werden lokale Dateien geladen.
+- **Formate:** Am besten kompatibel ist MP4 mit H.264-Codec. WebM funktioniert
+  in Chrome/Firefox, MOV meist ebenfalls.
+- **Datenschutz:** Keine Server, keine Analyse, keine Cookies – die App läuft
+  komplett offline.
+
+## Ideen für später
+
+- Standbild als Bild exportieren (mit eingezeichneten Linien)
+- Mehrere Videos in einer Sitzung vergleichen
+- Schwung in einer Schleife abspielen (Loop)
