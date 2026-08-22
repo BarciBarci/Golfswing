@@ -49,6 +49,7 @@ const exportBtn = $('export-btn');
 const importBtn = $('import-btn');
 const importInput = $('import-input');
 const saveGlfBtn = $('save-glf-btn');
+const glfStatus = $('glf-status');
 const clearAllBtn = $('clear-all-btn');
 
 const transportEl = $('transport');
@@ -772,18 +773,9 @@ function onTrimPlayRange() {
   if (e - s < 0.1) return;
   state.previewing = true;
   video.pause();
-  video.currentTime = s;
-  const playRange = () => {
+  seekAndWait(s, () => {
     video.play().catch(() => {});
-  };
-  if (Math.abs(video.currentTime - s) < 0.001) {
-    playRange();
-  } else {
-    video.addEventListener('seeked', function once() {
-      video.removeEventListener('seeked', once);
-      playRange();
-    });
-  }
+  });
 }
 
 function applyTrimAndAnalyze() {
@@ -844,9 +836,114 @@ function downloadBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+// Seek to a position and only call done() once the seek has actually finished.
+// Reading video.currentTime right after setting it returns the target value
+// immediately, so a naive comparison cannot tell whether the seek completed.
+function seekAndWait(target, done) {
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    video.removeEventListener('seeked', onSeek);
+    clearInterval(pollTimer);
+    clearTimeout(timeoutTimer);
+    done();
+  };
+  const onSeek = () => finish();
+  const pollTimer = setInterval(() => {
+    if (!video.seeking && Math.abs(video.currentTime - target) < 0.02) {
+      finish();
+    }
+  }, 25);
+  const timeoutTimer = setTimeout(finish, 5000); // safety net
+  video.addEventListener('seeked', onSeek);
+  video.currentTime = target;
+}
+
+// Record the trimmed range in real time and resolve with the resulting blob.
+// Always records through a canvas: drawImage applies the rotation metadata of
+// phone videos correctly (video.captureStream ignores it in Chromium and would
+// output the trimmed video rotated by 90°).
+function recordTrimmedRange(onProgress) {
+  return new Promise((resolve, reject) => {
+    if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
+      reject(new Error('unsupported'));
+      return;
+    }
+    const dur = video.duration || 0;
+    const s = Math.max(0, Math.min(state.trim.start, dur));
+    const e = isFinite(state.trim.end) ? Math.min(state.trim.end, dur) : dur;
+    if (e - s < 0.1) {
+      reject(new Error('short'));
+      return;
+    }
+    const prevRate = video.playbackRate;
+    video.pause();
+    video.playbackRate = 1;
+
+    const recCanvas = document.createElement('canvas');
+    recCanvas.width = video.videoWidth || 1280;
+    recCanvas.height = video.videoHeight || 720;
+    let drawTimer = null;
+    let rec = null;
+    let chunks = [];
+
+    const onTick = () => {
+      if (video.currentTime >= e) {
+        video.pause();
+        if (rec && rec.state !== 'inactive') rec.stop();
+      } else {
+        const pct = Math.min(100, Math.round(((video.currentTime - s) / (e - s)) * 100));
+        if (onProgress) onProgress(pct);
+        requestAnimationFrame(onTick);
+      }
+    };
+
+    seekAndWait(s, () => {
+      // Create the stream only now: the video sits at the trim start and is
+      // about to play. Video only – combining the video element's audio track
+      // with a canvas stream can produce WebM files that Chrome cannot play.
+      const src = recCanvas.captureStream(30);
+      const mime = pickMime();
+      rec = new MediaRecorder(
+        src,
+        mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : { videoBitsPerSecond: 8000000 }
+      );
+      rec.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size) chunks.push(ev.data);
+      };
+      rec.onstop = () => {
+        if (drawTimer) clearInterval(drawTimer);
+        video.playbackRate = prevRate;
+        const blob = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' });
+        if (!chunks.length || blob.size < 100) {
+          reject(new Error('empty'));
+          return;
+        }
+        resolve(blob);
+      };
+      // Draw the first frame immediately: the frame at the trim start is now
+      // actually displayed, so the recording can't begin with a stale frame.
+      recCanvas.getContext('2d').drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
+      drawTimer = setInterval(() => {
+        recCanvas.getContext('2d').drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
+      }, 33);
+      try {
+        rec.start(250);
+        video.play().catch(() => {});
+        requestAnimationFrame(onTick);
+      } catch (err) {
+        if (drawTimer) clearInterval(drawTimer);
+        video.playbackRate = prevRate;
+        reject(err);
+      }
+    });
+  });
+}
+
 function exportTrimmedVideo() {
   if (state.recording) return;
-  if (typeof MediaRecorder === 'undefined') {
+  if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
     trimStatus.hidden = false;
     trimStatus.textContent =
       'Saving is not supported by this browser – just use “Apply & Analyze”.';
@@ -860,12 +957,6 @@ function exportTrimmedVideo() {
     trimStatus.textContent = 'The range is too short – check the start and end.';
     return;
   }
-  if (typeof canvas.captureStream !== 'function') {
-    trimStatus.hidden = false;
-    trimStatus.textContent =
-      'Saving is not supported by this browser – just use “Apply & Analyze”.';
-    return;
-  }
 
   state.recording = true;
   state.previewing = false;
@@ -873,81 +964,25 @@ function exportTrimmedVideo() {
   trimStatus.textContent = 'Preparing recording…';
   setTrimButtonsDisabled(true);
 
-  video.pause();
-  video.playbackRate = 1;
-
-  // Always record through a canvas: drawImage applies the rotation metadata of
-  // phone videos correctly (video.captureStream ignores it in Chromium and
-  // would output the trimmed video rotated by 90°).
-  const recCanvas = document.createElement('canvas');
-  recCanvas.width = video.videoWidth || 1280;
-  recCanvas.height = video.videoHeight || 720;
-  const src = recCanvas.captureStream(30);
-  let drawTimer = null;
-
-  // Carry the audio track over from the video, if available
-  if (typeof video.captureStream === 'function') {
-    try {
-      video.captureStream().getAudioTracks().forEach((t) => src.addTrack(t));
-    } catch (err) {
-      /* no audio available */
-    }
-  }
-
-  const mime = pickMime();
-  const rec = new MediaRecorder(
-    src,
-    mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : { videoBitsPerSecond: 8000000 }
-  );
-  const chunks = [];
-  rec.ondataavailable = (ev) => {
-    if (ev.data && ev.data.size) chunks.push(ev.data);
-  };
-  rec.onstop = () => {
-    if (drawTimer) clearInterval(drawTimer);
-    const blob = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' });
-    downloadBlob(blob, 'golf-swing-trimmed.' + extFor(rec.mimeType || mime));
-    state.recording = false;
-    setTrimButtonsDisabled(false);
-    trimStatus.textContent = 'File saved – applying the trim now.';
-    applyTrimAndAnalyze();
-  };
-
-  const onTick = () => {
-    if (!state.recording) return;
-    if (video.currentTime >= e) {
-      video.pause();
-      rec.stop();
-    } else {
-      const pct = Math.min(100, Math.round(((video.currentTime - s) / (e - s)) * 100));
-      trimStatus.textContent = 'Recording range… ' + pct + ' %';
-      requestAnimationFrame(onTick);
-    }
-  };
-
-  video.currentTime = s;
-  const startRecording = () => {
-    drawTimer = setInterval(() => {
-      recCanvas.getContext('2d').drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
-    }, 33);
-    try {
-      rec.start(250);
-      video.play().catch(() => {});
-      requestAnimationFrame(onTick);
-    } catch (err) {
+  recordTrimmedRange((pct) => {
+    trimStatus.textContent = 'Recording range… ' + pct + ' %';
+  })
+    .then((blob) => {
       state.recording = false;
       setTrimButtonsDisabled(false);
-      trimStatus.textContent = 'Recording failed: ' + err.message;
-    }
-  };
-  if (Math.abs(video.currentTime - s) < 0.001) {
-    startRecording(); // no seek needed, the position is already at the trim start
-  } else {
-    video.addEventListener('seeked', function once() {
-      video.removeEventListener('seeked', once);
-      startRecording();
+      const fileName = 'golf-swing-trimmed.' + extFor(blob.type);
+      downloadBlob(blob, fileName);
+      trimStatus.textContent = 'File saved – applying the trim now.';
+      applyTrimAndAnalyze();
+    })
+    .catch((err) => {
+      state.recording = false;
+      setTrimButtonsDisabled(false);
+      trimStatus.textContent =
+        err && err.message === 'empty'
+          ? 'Recording failed – no video data was captured. Please try again.'
+          : 'Recording failed. Please try again.';
     });
-  }
 }
 
 // ---------- Overlay list ----------
@@ -1136,31 +1171,70 @@ function applyGlfProject(meta) {
   setMode('analysis');
 }
 
-function saveGlf() {
+async function saveGlf() {
+  if (state.recording) return;
   if (!state.sourceBlob) {
     alert('No video loaded – please open a video first.');
     return;
   }
+  const dur = video.duration || 0;
+  const s = Math.max(0, Math.min(state.trim.start, dur));
+  const e = isFinite(state.trim.end) ? Math.min(state.trim.end, dur) : dur;
+  const needsTrim = e - s > 0.1 && (s > 0.01 || e < dur - 0.01);
+
+  let videoBlob = state.sourceBlob;
+  let shift = 0;
+  let trimMeta = {
+    start: state.trim.start,
+    end: isFinite(state.trim.end) ? state.trim.end : null,
+  };
+
+  if (needsTrim) {
+    // Embed the trimmed video instead of the full one
+    if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
+      alert(
+        'Embedding the trimmed video needs recording support, which this browser lacks. ' +
+        'Use “Save as file” first and then continue with the trimmed video.'
+      );
+      return;
+    }
+    glfStatus.hidden = false;
+    glfStatus.textContent = 'Preparing trimmed video…';
+    state.recording = true;
+    try {
+      videoBlob = await recordTrimmedRange((pct) => {
+        glfStatus.textContent = 'Preparing trimmed video… ' + pct + ' %';
+      });
+    } catch (err) {
+      state.recording = false;
+      glfStatus.textContent =
+        err && err.message === 'empty'
+          ? 'Could not create the trimmed video – no video data was captured. Please try again.'
+          : 'Could not create the trimmed video.';
+      return;
+    }
+    state.recording = false;
+    shift = s;
+    trimMeta = { start: 0, end: null }; // the embedded video is already trimmed
+  }
+
   const meta = {
     app: 'golf-schwunganalyse',
     version: 1,
     videoName: state.videoName || 'video',
-    videoMime: state.sourceBlob.type || 'video/mp4',
+    videoMime: videoBlob.type || 'video/mp4',
     fps: state.fps,
     speed: parseFloat(speedSlider.value),
     thickness: state.thickness,
-    trim: {
-      start: state.trim.start,
-      end: isFinite(state.trim.end) ? state.trim.end : null,
-    },
+    trim: trimMeta,
     overlays: state.overlays.map((o) => ({
       id: o.id,
       type: o.type,
       label: o.label,
       color: o.color,
       width: o.width,
-      start: o.start,
-      end: o.end,
+      start: Math.max(0, (o.start || 0) - shift),
+      end: isFinite(o.end) ? Math.max(0, o.end - shift) : Infinity,
       visible: o.visible,
       pts: o.pts,
     })),
@@ -1171,8 +1245,9 @@ function saveGlf() {
   new Uint8Array(header, 0, 4).set([0x47, 0x4c, 0x46, 0x31]); // magic “GLF1”
   dv.setUint32(4, metaBytes.byteLength, true);
   new Uint8Array(header, 8, metaBytes.byteLength).set(metaBytes);
-  const blob = new Blob([header, state.sourceBlob], { type: 'application/octet-stream' });
+  const blob = new Blob([header, videoBlob], { type: 'application/octet-stream' });
   downloadBlob(blob, 'swing-analysis.glf');
+  glfStatus.hidden = true;
 }
 
 // ---------- Export / Import ----------

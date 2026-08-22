@@ -68,6 +68,14 @@ line along the spine, and set the time window (from/to) tightly around that
 moment. While playing, you can see at exactly the right position whether the
 alignment is correct.
 
+## Android app (.apk / F-Droid)
+
+The `android/` folder contains a minimal **WebView wrapper** that packages the
+web app as an Android app. It runs fully offline, uses no Play services and no
+proprietary libraries, so it is suitable for **F-Droid**. See
+[`android/README.md`](android/README.md) for build instructions, and
+`android/fdroid-metadata.example.yml` for the F-Droid recipe template.
+
 ## Project structure
 
 ```
@@ -75,6 +83,8 @@ golf-schwunganalyse/
 ├── index.html   # UI structure
 ├── styles.css   # Styling (dark theme, mobile-optimized)
 ├── app.js       # Logic: video, trim, speed, drawing, .glf
+├── android/     # Android WebView wrapper (APK / F-Droid)
+├── LICENSE      # MIT license (required by F-Droid)
 └── README.md
 ```
 
@@ -104,9 +114,9 @@ is where you cut away the beginning and the end, so that only the actual swing
 - **“💾 Save as file”** – records the trimmed range in real time and downloads
   a **standalone video file** (WebM in Chrome/Firefox, MP4 in Safari). This is
   a re-encoded copy: it takes as long as the range itself (e.g. 10 s for a 10 s
-  swing) and has no overlays. Afterwards the trim is applied automatically and
-  the analysis starts. If your browser does not support recording, trimming
-  still works – you just use “Apply & Analyze”.
+  swing) and has no overlays. Afterwards the trim is applied and the analysis
+  continues. If your browser does not support recording, trimming still works
+  – you just use “Apply & Analyze”.
 - You can always go back: the green banner in the analysis view offers **“✏️
   Adjust trim”** (re-open the trim step with your current values) and **“Reset
   trim”** (analyze the whole video again).
@@ -123,26 +133,31 @@ trimmed video**, use **“💾 Save .glf”** in the Overlays panel. A
 
 **What is stored in a .glf file:**
 
-- the complete **video** (original quality, with rotation metadata)
-- the **trim range** (start/end)
+- the **video** – if a trim is active, the **trimmed range** is embedded
+  (recorded once when saving, so saving takes as long as the range); without a
+  trim, the original video is embedded (instant and lossless)
+- the **trim** (start/end) if the full video is embedded
 - **all overlays**: lines and circles with color, stroke width (1×–3×), time
   window (from/to) and visibility setting
 - the **frame rate**, the current **playback speed** and the default **stroke
   width**
 
 **Reopening a .glf project:** On the start screen choose **“📁 Load .glf
-project”** or drag the file onto the drop zone. The video is restored, the trim
-is applied automatically and all overlays appear again – you continue directly
-in the analysis mode at the start of the trimmed range.
+project”** or drag the file onto the drop zone. The video and all overlays are
+restored and you continue directly in the analysis mode – a trim that was cut
+is already part of the video.
 
-**Lossless and instant:** Saving is immediate and without quality loss, because
-no new video is created – the original video is embedded in the file and the
-cut is stored as a setting. In technical terms, a .glf file is a binary
-container: the magic bytes `GLF1`, a JSON metadata block (trim, overlays,
-settings), followed by the video data. It can only be opened by this app.
+**Saving time:** Without a trim, saving is immediate and lossless because the
+original video is just copied into the file. With an active trim, the trimmed
+range is recorded once in real time (like “Save as file”, with a progress
+indicator) and that recording is embedded – so the .glf contains exactly the
+trimmed video, and the overlay time windows are shifted to the new timeline.
+In technical terms, a .glf file is a binary container: the magic bytes `GLF1`,
+a JSON metadata block (trim, overlays, settings), followed by the video data.
+It can only be opened by this app.
 
-**Note on file size:** Because the .glf file contains the complete video, it is
-at least as large as the video itself. For sharing with a coach, use cloud
+**Note on file size:** Because the .glf file contains the (trimmed) video, it
+is at least as large as that video. For sharing with a coach, use cloud
 storage or a USB stick rather than email.
 
 **Difference to “Save as file”:** “Save as file” creates a standalone,
@@ -160,6 +175,9 @@ project with all lines and circles.
   range (WebM in Chrome/Firefox, MP4 in Safari). Recording runs in real time.
   In browsers without support, trimming still works – the cut is then just
   applied for the analysis.
+- **No audio in recorded videos:** the re-encoded trimmed videos (both “Save
+  as file” and the trimmed video embedded in a .glf) are video-only – they do
+  not contain the original sound track.
 - **Privacy:** No servers, no analytics, no cookies – the app runs fully
   offline.
 

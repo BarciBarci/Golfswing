@@ -31,6 +31,21 @@
       <button class="btn primary" id="choose-file-btn">🎥 Load video</button>
       <button class="btn ghost" id="choose-glf-btn">📁 Load .glf project</button>
     </div>
+    <div class="drop-zone-info">
+      <p>
+        <strong>🎬 Video:</strong> After loading, the video can be <strong>trimmed</strong> –
+        the start and the end are cut off. Then you play it in slow motion, draw
+        lines and circles on it and save everything as a .glf project. The trimmed
+        video can also be saved separately as a video file (“💾 Save as file”).
+      </p>
+      <p>
+        <strong>📦 .glf:</strong> A .glf file contains the <strong>video data together with
+        all lines and circles</strong> (plus the trim and settings). If a trim is set, the
+        file contains exactly the <strong>trimmed video</strong>; without a trim, the full
+        video is embedded. Reopen it anytime to continue your analysis exactly
+        where you left off.
+      </p>
+    </div>
   </div>
 </section>
 
@@ -63,6 +78,19 @@
         <div id="draw-hint" class="draw-hint"></div>
       </div>
 
+      <!-- Timeline slider directly below the video -->
+      <div class="scrubber-row">
+        <input type="range" id="scrubber" min="0" max="1000" step="1" value="0" aria-label="Timeline">
+      </div>
+
+      <!-- Transport -->
+      <div class="transport" id="transport">
+        <button class="tool-btn" id="step-back" title="One frame back (←)">⏮</button>
+        <button class="btn primary big" id="play-pause" title="Play / Pause (Space)">▶</button>
+        <button class="tool-btn" id="step-fwd" title="One frame forward (→)">⏭</button>
+        <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
+      </div>
+
       <!-- Trim indicator (analysis mode) -->
       <div id="trim-banner" class="trim-banner" hidden>
         <span id="trim-banner-text"></span>
@@ -93,19 +121,6 @@
         <p id="trim-status" class="trim-status" hidden></p>
       </div>
 
-      <!-- Timeline slider directly below the video -->
-      <div class="scrubber-row">
-        <input type="range" id="scrubber" min="0" max="1000" step="1" value="0" aria-label="Timeline">
-      </div>
-
-      <!-- Transport -->
-      <div class="transport" id="transport">
-        <button class="tool-btn" id="step-back" title="One frame back (←)">⏮</button>
-        <button class="btn primary big" id="play-pause" title="Play / Pause (Space)">▶</button>
-        <button class="tool-btn" id="step-fwd" title="One frame forward (→)">⏭</button>
-        <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
-      </div>
-
       <!-- Speed -->
       <div class="speed-row" id="speed-row">
         <label for="speed-slider">Speed</label>
@@ -122,7 +137,11 @@
 
     <!-- Overlay list -->
     <aside class="overlay-panel">
-      <button id="overlay-toggle" class="overlay-toggle" aria-expanded="false">Overlays (0) ▸</button>
+      <div class="overlay-header">
+        <button id="overlay-toggle" class="overlay-toggle" aria-expanded="false">Overlays (0) ▸</button>
+        <button id="save-glf-btn" class="btn primary">💾 Save .glf</button>
+      </div>
+      <p id="glf-status" class="glf-status" hidden></p>
       <div id="overlay-content" class="overlay-content hidden">
         <p id="overlay-empty" class="overlay-empty">
           No overlays yet.<br>
@@ -134,7 +153,6 @@
         <div class="overlay-actions">
           <button id="export-btn" class="btn ghost">Export</button>
           <button id="import-btn" class="btn ghost">Import</button>
-          <button id="save-glf-btn" class="btn ghost">💾 Save .glf</button>
           <button id="clear-all-btn" class="btn ghost danger">Clear all</button>
           <input type="file" id="import-input" accept=".json,application/json" hidden>
         </div>
