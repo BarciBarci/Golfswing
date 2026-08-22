@@ -29,7 +29,7 @@ body {
 
 [hidden] { display: none !important; }
 
-/* ---------- Kopf- und Fußzeile ---------- */
+/* ---------- Header and footer ---------- */
 .app-header {
   display: flex;
   align-items: center;
@@ -85,6 +85,13 @@ body {
 
 .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input[type="range"]:disabled { opacity: 0.5; }
+
 .btn.big {
   width: 58px;
   height: 58px;
@@ -96,7 +103,7 @@ body {
   justify-content: center;
 }
 
-/* ---------- Startbildschirm ---------- */
+/* ---------- Start screen ---------- */
 .upload-screen {
   flex: 1;
   display: flex;
@@ -132,7 +139,14 @@ body {
   line-height: 1.6;
 }
 
-/* ---------- Player-Layout ---------- */
+.upload-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ---------- Player layout ---------- */
 .player-screen {
   flex: 1;
   width: 100%;
@@ -154,7 +168,7 @@ body {
   .player-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------- Bühne (Video + Canvas) ---------- */
+/* ---------- Stage (video + canvas) ---------- */
 .stage {
   position: relative;
   margin: 0 auto;
@@ -179,7 +193,7 @@ body {
   cursor: crosshair;
 }
 
-/* ---------- Werkzeugleiste ---------- */
+/* ---------- Toolbar ---------- */
 .toolbar {
   position: absolute;
   top: 8px;
@@ -315,15 +329,23 @@ body {
   margin-top: 12px;
 }
 
+.transport .tool-btn {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+  padding: 0;
+  justify-content: center;
+}
+
 .time-display {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  min-width: 118px;
+  min-width: 138px;
   text-align: center;
   font-size: 14px;
 }
 
-/* ---------- Geschwindigkeit ---------- */
+/* ---------- Speed ---------- */
 .speed-row {
   display: flex;
   align-items: center;
@@ -368,10 +390,101 @@ body {
   font-weight: 700;
 }
 
-/* ---------- Slider (Zeitleiste) ---------- */
+/* ---------- Slider (timeline) ---------- */
 .scrubber-row {
   margin-top: 8px;
   padding: 0 2px;
+}
+
+/* ---------- Trim ---------- */
+.trim-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(48, 209, 88, 0.12);
+  border: 1px solid rgba(48, 209, 88, 0.35);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.trim-banner span {
+  flex: 1;
+  min-width: 120px;
+}
+
+.trim-banner .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.trim-panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.trim-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.trim-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+.trim-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.trim-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.trim-row input {
+  width: 70px;
+  background: var(--bg);
+  border: 1px solid #2c3446;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.trim-row input:focus { outline: 1px solid var(--accent); }
+
+.trim-row .btn {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.trim-length {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.trim-status {
+  font-size: 13px;
+  color: var(--accent);
+  margin: 10px 0 0;
+  line-height: 1.5;
 }
 
 #scrubber { width: 100%; }
@@ -405,7 +518,7 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* ---------- Überlagerungs-Liste ---------- */
+/* ---------- Overlay list ---------- */
 .overlay-panel {
   background: var(--panel);
   border-radius: var(--radius);
@@ -520,7 +633,7 @@ input[type="range"]::-moz-range-thumb {
 
 .overlay-actions .btn { padding: 8px 12px; font-size: 13px; }
 
-/* ---------- Fokus-Stile ---------- */
+/* ---------- Focus styles ---------- */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

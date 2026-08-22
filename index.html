@@ -1,32 +1,36 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f1115">
-<meta name="description" content="Golf-Schwunganalyse: Video langsam abspielen und Linien/Kreise zur Haltungskontrolle überlagern.">
-<title>Golf-Schwunganalyse</title>
+<meta name="description" content="Golf swing analysis: play back a swing video in slow motion and overlay lines and circles to check posture.">
+<title>Golf Swing Analysis</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <header class="app-header">
-  <h1>⛳ Golf-Schwunganalyse</h1>
-  <button id="new-video-btn" class="btn ghost" hidden>Neues Video</button>
+  <h1>⛳ Golf Swing Analysis</h1>
+  <button id="new-video-btn" class="btn ghost" hidden>New video</button>
 </header>
 
-<!-- ===== Startbildschirm: Video laden ===== -->
+<!-- ===== Start screen: load a video ===== -->
 <section id="upload-screen" class="upload-screen">
   <div id="drop-zone" class="drop-zone">
     <div class="drop-zone-icon">🎥</div>
-    <p class="drop-zone-title">Golf-Schwung-Video öffnen</p>
+    <p class="drop-zone-title">Open golf swing</p>
     <p class="drop-zone-hint">
-      Video hierher ziehen oder über die Schaltfläche auswählen.<br>
-      Alles läuft lokal in deinem Browser – es wird nichts hochgeladen.
+      Drag a video (MP4, WebM, MOV …) or a <strong>.glf</strong> project here, or choose one via the buttons below.<br>
+      Everything runs locally in your browser – nothing is uploaded.
     </p>
     <input type="file" id="video-input" accept="video/*" hidden>
-    <button class="btn primary" id="choose-file-btn">Video auswählen</button>
+    <input type="file" id="glf-input" accept=".glf" hidden>
+    <div class="upload-buttons">
+      <button class="btn primary" id="choose-file-btn">🎥 Load video</button>
+      <button class="btn ghost" id="choose-glf-btn">📁 Load .glf project</button>
+    </div>
   </div>
 </section>
 
@@ -35,72 +39,103 @@
   <div class="player-grid">
 
     <div class="player-main">
-      <!-- Bühne: Video + Overlay-Canvas + Werkzeugleiste -->
+      <!-- Stage: video + overlay canvas + toolbar -->
       <div id="stage" class="stage">
         <video id="video" playsinline preload="metadata"></video>
         <canvas id="overlay"></canvas>
 
         <div id="toolbar" class="toolbar">
-          <button class="tool-btn active" id="tool-line" title="Linie zeichnen (Taste L)" aria-pressed="true">📏</button>
-          <button class="tool-btn" id="tool-circle" title="Kreis zeichnen (Taste C)" aria-pressed="false">⭕</button>
-          <button class="tool-btn" id="tool-move" title="Punkte verschieben – Linienenden und Kreismittelpunkt antippen und ziehen (Taste M)" aria-pressed="false">🖐</button>
+          <button class="tool-btn active" id="tool-line" title="Draw line (key L)" aria-pressed="true">📏</button>
+          <button class="tool-btn" id="tool-circle" title="Draw circle (key C)" aria-pressed="false">⭕</button>
+          <button class="tool-btn" id="tool-move" title="Move points – tap and drag line endpoints or circle center (key M)" aria-pressed="false">🖐</button>
           <span class="tool-divider" aria-hidden="true"></span>
-          <div class="tool-group" id="color-row" title="Farbe wählen"></div>
+          <div class="tool-group" id="color-row" title="Choose color"></div>
           <span class="tool-divider" aria-hidden="true"></span>
-          <div class="tool-group" id="thickness-group" title="Linienstärke für neue Formen (1×–3×)">
+          <div class="tool-group" id="thickness-group" title="Stroke width for new shapes (1×–3×)">
             <span class="thickness-icon" aria-hidden="true">▬</span>
-            <input type="range" id="thickness-slider" min="1" max="3" step="0.5" value="1" aria-label="Linienstärke">
+            <input type="range" id="thickness-slider" min="1" max="3" step="0.5" value="1" aria-label="Stroke width">
             <span id="thickness-value" class="thickness-value">1×</span>
           </div>
           <span class="tool-divider" aria-hidden="true"></span>
-          <button class="tool-btn" id="undo-btn" title="Letzte Überlagerung rückgängig (Strg+Z)">↩</button>
+          <button class="tool-btn" id="undo-btn" title="Undo last overlay (Ctrl+Z)">↩</button>
         </div>
 
         <div id="draw-hint" class="draw-hint"></div>
       </div>
 
-      <!-- Slider (Zeitleiste) direkt unter dem Video -->
+      <!-- Trim indicator (analysis mode) -->
+      <div id="trim-banner" class="trim-banner" hidden>
+        <span id="trim-banner-text"></span>
+        <button id="trim-edit-btn" class="btn ghost">✏️ Adjust trim</button>
+        <button id="trim-reset-btn" class="btn ghost">Reset trim</button>
+      </div>
+
+      <!-- Prepare trim (trim mode) -->
+      <div id="trim-panel" class="trim-panel" hidden>
+        <div class="trim-title">Step 1 – Prepare trim
+          <span class="trim-hint">Cut off the start and end of the video, then apply and analyze. Optionally save as a file first.</span>
+        </div>
+        <div class="trim-row">
+          <label>Start <input type="text" id="trim-start" inputmode="decimal" placeholder="0"></label>
+          <button id="trim-set-start" class="btn ghost">Start = position</button>
+          <label>End <input type="text" id="trim-end" inputmode="decimal" placeholder="End"></label>
+          <button id="trim-set-end" class="btn ghost">End = position</button>
+        </div>
+        <div class="trim-row">
+          <button id="trim-play-btn" class="btn ghost" title="Play/pause for browsing">▶ Play</button>
+          <button id="trim-play-range-btn" class="btn ghost" title="Play only the selected range">Play range</button>
+          <span id="trim-length" class="trim-length"></span>
+        </div>
+        <div class="trim-row">
+          <button id="trim-save-btn" class="btn ghost">💾 Save as file</button>
+          <button id="trim-apply-btn" class="btn primary">Apply & Analyze</button>
+        </div>
+        <p id="trim-status" class="trim-status" hidden></p>
+      </div>
+
+      <!-- Timeline slider directly below the video -->
       <div class="scrubber-row">
-        <input type="range" id="scrubber" min="0" max="1000" step="1" value="0" aria-label="Zeitleiste">
+        <input type="range" id="scrubber" min="0" max="1000" step="1" value="0" aria-label="Timeline">
       </div>
 
       <!-- Transport -->
-      <div class="transport">
-        <button class="tool-btn" id="step-back" title="Ein Bild zurück (←)">⏮</button>
-        <button class="btn primary big" id="play-pause" title="Abspielen / Pause (Leertaste)">▶</button>
-        <button class="tool-btn" id="step-fwd" title="Ein Bild vor (→)">⏭</button>
+      <div class="transport" id="transport">
+        <button class="tool-btn" id="step-back" title="One frame back (←)">⏮</button>
+        <button class="btn primary big" id="play-pause" title="Play / Pause (Space)">▶</button>
+        <button class="tool-btn" id="step-fwd" title="One frame forward (→)">⏭</button>
         <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
       </div>
 
-      <!-- Geschwindigkeit -->
-      <div class="speed-row">
-        <label for="speed-slider">Tempo</label>
+      <!-- Speed -->
+      <div class="speed-row" id="speed-row">
+        <label for="speed-slider">Speed</label>
         <input type="range" id="speed-slider" min="0.1" max="1" step="0.05" value="1">
-        <span id="speed-value" class="speed-value">1,00×</span>
+        <span id="speed-value" class="speed-value">1.00×</span>
         <div class="speed-chips">
-          <button class="chip" data-speed="0.1">0,1×</button>
-          <button class="chip" data-speed="0.25">0,25×</button>
-          <button class="chip" data-speed="0.5">0,5×</button>
+          <button class="chip" data-speed="0.1">0.1×</button>
+          <button class="chip" data-speed="0.25">0.25×</button>
+          <button class="chip" data-speed="0.5">0.5×</button>
           <button class="chip active" data-speed="1">1×</button>
         </div>
       </div>
     </div>
 
-    <!-- Überlagerungs-Liste -->
+    <!-- Overlay list -->
     <aside class="overlay-panel">
-      <button id="overlay-toggle" class="overlay-toggle" aria-expanded="false">Überlagerungen (0) ▸</button>
+      <button id="overlay-toggle" class="overlay-toggle" aria-expanded="false">Overlays (0) ▸</button>
       <div id="overlay-content" class="overlay-content hidden">
         <p id="overlay-empty" class="overlay-empty">
-          Noch keine Überlagerungen.<br>
-          Wähle 📏 Linie oder ⭕ Kreis und zeichne direkt auf dem Video.<br><br>
-          <em>Tipp:</em> In der Liste kannst du pro Linie/Kreis ein Zeitfenster (von/bis)
-          setzen, damit sie nur in einem bestimmten Schwungabschnitt erscheint.
+          No overlays yet.<br>
+          Choose 📏 line or ⭕ circle and draw directly on the video.<br><br>
+          <em>Tip:</em> In the list you can set a time window (from/to) per line/circle
+          so it only appears during a specific part of the swing.
         </p>
         <ul id="overlay-list"></ul>
         <div class="overlay-actions">
-          <button id="export-btn" class="btn ghost">Exportieren</button>
-          <button id="import-btn" class="btn ghost">Importieren</button>
-          <button id="clear-all-btn" class="btn ghost danger">Alle löschen</button>
+          <button id="export-btn" class="btn ghost">Export</button>
+          <button id="import-btn" class="btn ghost">Import</button>
+          <button id="save-glf-btn" class="btn ghost">💾 Save .glf</button>
+          <button id="clear-all-btn" class="btn ghost danger">Clear all</button>
           <input type="file" id="import-input" accept=".json,application/json" hidden>
         </div>
       </div>
@@ -110,7 +145,7 @@
 </section>
 
 <footer class="app-footer">
-  <p>Läuft komplett lokal im Browser – dein Video und deine Überlagerungen verlassen dein Gerät nicht.</p>
+  <p>Runs completely locally in your browser – your video and overlays never leave your device.</p>
 </footer>
 
 <script src="app.js"></script>
