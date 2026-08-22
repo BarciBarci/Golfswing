@@ -33,6 +33,8 @@ const stepFwdBtn = $('step-fwd');
 const timeDisplay = $('time-display');
 const speedSlider = $('speed-slider');
 const speedValue = $('speed-value');
+const thicknessSlider = $('thickness-slider');
+const thicknessValue = $('thickness-value');
 const scrubber = $('scrubber');
 
 const overlayToggle = $('overlay-toggle');
@@ -53,6 +55,7 @@ const COLORS = [
 const state = {
   tool: 'line',
   color: COLORS[0],
+  thickness: 1,             // Linienstärke (1×–3×) für neue Formen
   overlays: [],          // [{id, type, label, color, start, end, visible, pts:[{x,y},{x,y}]}]
   history: [],           // Overlay-IDs in Erstellreihenfolge (für Rückgängig)
   nextId: 1,
@@ -297,6 +300,7 @@ function onPointerDown(e) {
     id: state.nextId++,
     type: state.tool,
     color: state.color,
+    width: state.thickness,
     start: 0,
     end: Infinity,
     visible: true,
@@ -373,22 +377,23 @@ function draw() {
   if (!video.src) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const t = video.currentTime || 0;
-  const lw = Math.max(2, canvas.width / 300);
+  const baseLw = Math.max(2, canvas.width / 300);
   for (const o of state.overlays) {
     if (!o.visible) continue;
     if (t < o.start || t > o.end) continue;
+    const w = baseLw * (o.width || 1);
     if (state.tool === 'move' && !state.drag && state.hover === o.id) {
-      paintOverlay(o, lw * 2.4, false); // Hervorhebung unter dem Cursor
+      paintOverlay(o, w * 2.4, false); // Hervorhebung unter dem Cursor
     }
-    paintOverlay(o, lw, false);
+    paintOverlay(o, w, false);
   }
-  if (state.drawing) paintOverlay(state.drawing, lw, true);
+  if (state.drawing) paintOverlay(state.drawing, baseLw * (state.drawing.width || 1), true);
   if (state.tool === 'move') drawHandles();
 }
 
-function paintOverlay(o, lw, preview) {
+function paintOverlay(o, lineWidth, preview) {
   ctx.strokeStyle = o.color;
-  ctx.lineWidth = lw;
+  ctx.lineWidth = lineWidth;
   ctx.setLineDash(preview ? [10, 8] : []);
   ctx.beginPath();
   const [a, b] = o.pts;
@@ -507,6 +512,14 @@ function updateSpeedUI() {
   });
 }
 
+// ---------- Linienstärke ----------
+function adjustThickness(delta) {
+  const newT = Math.min(3, Math.max(1, state.thickness + delta));
+  state.thickness = Math.round(newT * 10) / 10;
+  thicknessSlider.value = state.thickness;
+  thicknessValue.textContent = fmtWidth(state.thickness);
+}
+
 // ---------- Überlagerungs-Liste ----------
 function renderOverlayList() {
   overlayEmpty.hidden = state.overlays.length > 0;
@@ -527,6 +540,9 @@ function renderOverlayList() {
       fmtInput(o.start) + '" placeholder="0"></span>' +
       '<span class="ov-time">bis <input type="text" inputmode="decimal" data-field="end" value="' +
       fmtInput(o.end) + '" placeholder="∞"></span>' +
+      '<button class="ov-width-btn" data-width="-0.5" title="Dünner">−</button>' +
+      '<span class="ov-width">' + fmtWidth(o.width || 1) + '</span>' +
+      '<button class="ov-width-btn" data-width="0.5" title="Dicker">+</button>' +
       '<button class="ov-vis' + (o.visible ? '' : ' off') +
       '" title="Sichtbarkeit umschalten">' + (o.visible ? '👁' : '🚫') + '</button>' +
       '<button class="ov-del" title="Löschen">✕</button>';
@@ -547,6 +563,14 @@ function onListClick(e) {
 
   if (e.target.classList.contains('ov-del')) {
     deleteOverlay(id);
+    return;
+  }
+  if (e.target.classList.contains('ov-width-btn')) {
+    const delta = Number(e.target.dataset.width);
+    const newW = Math.min(3, Math.max(1, (o.width || 1) + delta));
+    o.width = Math.round(newW * 10) / 10;
+    li.querySelector('.ov-width').textContent = fmtWidth(o.width);
+    draw();
     return;
   }
   if (e.target.classList.contains('ov-vis')) {
@@ -589,6 +613,10 @@ function fmtInput(v) {
   return String(Math.round(v * 100) / 100);
 }
 
+function fmtWidth(v) {
+  return String(Math.round(v * 10) / 10).replace('.', ',') + '×';
+}
+
 function deleteOverlay(id) {
   state.overlays = state.overlays.filter((o) => o.id !== id);
   state.history = state.history.filter((h) => h !== id);
@@ -621,6 +649,7 @@ function exportOverlays() {
       start: o.start,
       end: o.end,
       visible: o.visible,
+      width: o.width,
       pts: o.pts,
     })),
   };
@@ -656,6 +685,7 @@ function importOverlays(file) {
           start: isFinite(o.start) && o.start > 0 ? o.start : 0,
           end: isFinite(o.end) && o.end > 0 ? o.end : Infinity,
           visible: o.visible !== false,
+          width: isFinite(o.width) ? Math.min(3, Math.max(1, o.width)) : 1,
           pts: [
             { x: Number(o.pts[0].x) || 0, y: Number(o.pts[0].y) || 0 },
             { x: Number(o.pts[1].x) || 0, y: Number(o.pts[1].y) || 0 },
@@ -695,6 +725,10 @@ function onKeydown(e) {
     setTool('circle');
   } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'm') {
     setTool('move');
+  } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '[') {
+    adjustThickness(-0.5);
+  } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === ']') {
+    adjustThickness(0.5);
   } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault();
     undo();
@@ -741,6 +775,10 @@ function init() {
   speedSlider.addEventListener('input', () => {
     video.playbackRate = parseFloat(speedSlider.value);
     updateSpeedUI();
+  });
+  thicknessSlider.addEventListener('input', () => {
+    state.thickness = parseFloat(thicknessSlider.value);
+    thicknessValue.textContent = fmtWidth(state.thickness);
   });
   document.querySelectorAll('.chip').forEach((ch) =>
     ch.addEventListener('click', () => {
@@ -823,6 +861,7 @@ function init() {
   }
 
   ctx.lineCap = 'round';
+  thicknessValue.textContent = fmtWidth(state.thickness);
   updateSpeedUI();
   setTool('line');
 }

@@ -17,11 +17,12 @@ Android. **Nothing is uploaded**; all data stays on your device.
 - ⏮⏭ **Single-frame stepping** forward/backward for precise swing analysis
 - 📏 **Lines** and ⭕ **circles** in 9 colors drawn directly on the video (mouse or touch)
 - 🖐 **Move**: drag individual grips (line endpoints, circle center/edge) – or grab the whole line/circle and move it (key `M`)
+- ✏️ **Stroke width**: adjustable per line/circle from 1× to 3× – toolbar for new shapes, −/+ in the list (keys `[`/`]`)
 - 👁 **Time window** per overlay (from/to): lines/circles only appear during a specific part of the swing – by default they are always visible
 - 🎚 **Timeline slider** directly below the video to jump to any position
 - ↩ **Undo**, delete individually or all, visibility toggle per element
 - 💾 **Export/import** overlays as JSON (e.g., to share with your coach)
-- ⌨️ **Keyboard**: `Space` play/pause · `←`/`→` single frame · `L`/`C`/`M` tool · `Esc` cancel · `Ctrl+Z` undo
+- ⌨️ **Keyboard**: `Space` play/pause · `←`/`→` single frame · `L`/`C`/`M` tool · `[`/`]` thickness · `Esc` cancel · `Ctrl+Z` undo
 
 ## Run locally
 
@@ -57,7 +58,7 @@ The app needs no backend and works directly via GitHub Pages:
 
 1. **Select a video** (the file stays on your device).
 2. Set the speed below (e.g. 0.25×), jump to the desired position with the slider, or step through the swing frame by frame (`⏮`/`⏭`).
-3. Choose the 📏 or ⭕ tool, pick a color, and draw directly on the video.
+3. Choose the 📏 or ⭕ tool, pick a color and stroke width (▬), and draw directly on the video.
 4. In the **Overlays** list, set a time window per element, toggle visibility, or delete it.
 5. Optionally, **export**/import the overlays as JSON.
 

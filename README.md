@@ -19,11 +19,12 @@ bleiben auf dem Gerät.
 - ⏮⏭ **Einzelbild-Schritt** vor/zurück für die genaue Schwunganalyse
 - 📏 **Linien** und ⭕ **Kreise** in 9 Farben direkt auf dem Video zeichnen (Maus oder Touch)
 - 🖐 **Verschieben**: Griffpunkte (Linienenden, Kreismitte/-rand) einzeln ziehen – oder die ganze Linie bzw. den ganzen Kreis packen und verschieben (Taste `M`)
+- ✏️ **Linienstärke**: pro Linie/Kreis von 1× bis 3× einstellbar – in der Werkzeugleiste für neue Formen, per −/+ in der Liste (Tasten `[`/`]`)
 - 👁 **Zeitfenster** pro Überlagerung (von/bis): Linien/Kreise erscheinen nur in einem bestimmten Schwungabschnitt – standardmäßig sind sie immer sichtbar
 - 🎚 **Zeitleisten-Slider** direkt unter dem Video zum Springen an jede Stelle
 - ↩ **Rückgängig**, Löschen einzeln oder alle, Sichtbarkeit pro Element
 - 💾 **Export/Import** der Überlagerungen als JSON (z. B. zum Teilen mit dem Trainer)
-- ⌨️ **Tastatur**: `Leertaste` Abspielen/Pause · `←`/`→` Einzelbild · `L`/`C`/`M` Werkzeug · `Esc` Abbruch · `Strg+Z` Rückgängig
+- ⌨️ **Tastatur**: `Leertaste` Abspielen/Pause · `←`/`→` Einzelbild · `L`/`C`/`M` Werkzeug · `[`/`]` Stärke · `Esc` Abbruch · `Strg+Z` Rückgängig
 
 ## Lokal starten
 
@@ -59,7 +60,7 @@ Die App braucht kein Backend und funktioniert direkt über GitHub Pages:
 
 1. **Video auswählen** (Datei bleibt lokal).
 2. Tempo unten einstellen (z. B. 0,25×), per Slider zur gewünschten Stelle springen oder ein Bild pro Schritt (`⏮`/`⏭`) navigieren.
-3. Werkzeug 📏 oder ⭕ wählen, Farbe antippen und direkt auf dem Video ziehen.
+3. Werkzeug 📏 oder ⭕ wählen, Farbe und Stärke (▬) einstellen und direkt auf dem Video ziehen.
 4. In der Liste **Überlagerungen** pro Element: Zeitfenster setzen, Sichtbarkeit umschalten oder löschen.
 5. Optional: Überlagerungen als JSON **exportieren**/importieren.
 

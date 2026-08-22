@@ -252,6 +252,34 @@ body {
   outline-offset: 2px;
 }
 
+.thickness-icon {
+  font-size: 15px;
+  color: var(--text);
+  padding: 0 2px;
+}
+
+#thickness-slider {
+  width: 64px;
+}
+
+#thickness-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+}
+
+#thickness-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+}
+
+.thickness-value {
+  font-size: 12px;
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .draw-hint {
   position: absolute;
   left: 8px;
@@ -460,8 +488,17 @@ input[type="range"]::-moz-range-thumb {
 
 .ov-time input:focus { outline: 1px solid var(--accent); }
 
+.ov-width {
+  font-size: 12px;
+  min-width: 30px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .ov-vis,
-.ov-del {
+.ov-del,
+.ov-width-btn {
   background: none;
   border: none;
   cursor: pointer;
