@@ -223,6 +223,9 @@ project with all lines and circles.
 - **No audio in recorded videos:** the re-encoded trimmed videos (both “Save
   as file” and the trimmed video embedded in a .glf) are video-only – they do
   not contain the original sound track.
+- **Rotation:** Videos that carry rotation metadata (recorded by a phone
+  camera) may be recorded sideways in Chrome. Converting such a video first
+  (see the HEVC note above) bakes the rotation in and it records upright.
 - **Privacy:** No servers, no analytics, no cookies – the app runs fully
   offline.
 

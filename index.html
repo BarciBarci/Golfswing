@@ -241,7 +241,25 @@
     try { rec.stop(); log('rec.stop() called'); } catch (e) { log('rec.stop threw: ' + e.message); }
     await new Promise((r) => setTimeout(r, 1200));
     const blob = new Blob(chunks, { type: rec.mimeType || mime });
-    log('FINAL: chunks=' + chunks.length + ' blob.size=' + blob.size + ' frames=' + frames);
+    log('FINAL (canvas): chunks=' + chunks.length + ' blob.size=' + blob.size + ' frames=' + frames);
+    // Variant B: video.captureStream (video-only)
+    log('--- Variant B: video.captureStream (video-only) ---');
+    try {
+      const vstream = new MediaStream(video.captureStream(30).getVideoTracks());
+      const rec2 = new MediaRecorder(vstream, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 8000000 });
+      const chunks2 = [];
+      rec2.ondataavailable = (ev) => { if (ev.data && ev.data.size) { chunks2.push(ev.data); log('  B dataavailable +' + ev.data.size + ' (total ' + chunks2.reduce((a, b) => a + b.size, 0) + ')'); } };
+      rec2.onstop = () => log('B onstop, chunks=' + chunks2.length);
+      rec2.onerror = (e) => log('B onerror: ' + (e && e.error ? e.error.message : 'unknown'));
+      rec2.start(250);
+      await seek(0.2);
+      try { await video.play(); } catch (e) { log('B play rejected: ' + e.message); }
+      await new Promise((r) => setTimeout(r, 2500));
+      video.pause();
+      rec2.stop();
+      await new Promise((r) => setTimeout(r, 1000));
+      log('B FINAL: chunks=' + chunks2.length + ' total=' + chunks2.reduce((a, b) => a + b.size, 0));
+    } catch (e) { log('B threw: ' + e.message); }
     log('=== done - please copy this text ===');
     video.muted = wasMuted;
     if (raf !== null) cancelAnimationFrame(raf);

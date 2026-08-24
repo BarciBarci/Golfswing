@@ -883,14 +883,16 @@ function seekAndWait(target, done) {
 }
 
 // Record the trimmed range in real time and resolve with the resulting blob.
-// Always records through a canvas: drawImage applies the rotation metadata of
-// phone videos correctly (video.captureStream ignores it in Chromium and would
-// output the trimmed video rotated by 90°).
+// Captures the video element's own stream (video track only, no audio) – this
+// is the one approach that works reliably in Chrome, Firefox and Safari.
+// Note: videos that carry rotation metadata (phone cameras) may be recorded
+// sideways in Chromium; converting such videos first (see the README) bakes the
+// rotation in and records them upright.
 // The function is designed to never hang: every path either resolves with the
 // recorded video or rejects with an error.
 function recordTrimmedRange(onProgress) {
   return new Promise((resolve, reject) => {
-    if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
+    if (typeof MediaRecorder === 'undefined' || typeof video.captureStream !== 'function') {
       reject(new Error('unsupported'));
       return;
     }
@@ -914,24 +916,6 @@ function recordTrimmedRange(onProgress) {
     // gesture is blocked. (The recording is video-only anyway.)
     video.muted = true;
 
-    const recCanvas = document.createElement('canvas');
-    recCanvas.width = video.videoWidth || 1280;
-    recCanvas.height = video.videoHeight || 720;
-    // Firefox only delivers frames from canvas.captureStream() when the canvas
-    // is actually presented by the compositor: it must be visible on screen.
-    // Show a small live preview in the corner while recording – the stream
-    // still captures the canvas bitmap at full resolution. Chrome works either
-    // way, so the preview is harmless there too.
-    const preAR = recCanvas.height ? recCanvas.width / recCanvas.height : 0.75;
-    const preW = 135;
-    recCanvas.style.cssText =
-      'position:fixed;bottom:12px;right:12px;' +
-      'width:' + preW + 'px;height:' + Math.round(preW / preAR) + 'px;' +
-      'border:2px solid var(--accent);border-radius:8px;background:#000;' +
-      'box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;' +
-      'z-index:2147483647;';
-    document.body.appendChild(recCanvas);
-    let rafDraw = null;
     let rec = null;
     let mime = '';
     let chunks = [];
@@ -942,16 +926,11 @@ function recordTrimmedRange(onProgress) {
     let resolveTimer = null;
 
     const cleanup = () => {
-      if (rafDraw !== null) {
-        cancelAnimationFrame(rafDraw);
-        rafDraw = null;
-      }
       clearTimeout(overallTimeout);
       if (resolveTimer !== null) {
         clearTimeout(resolveTimer);
         resolveTimer = null;
       }
-      if (recCanvas.parentNode) recCanvas.parentNode.removeChild(recCanvas);
       video.removeEventListener('ended', onEnded);
       video.muted = wasMuted;
     };
@@ -1057,9 +1036,14 @@ function recordTrimmedRange(onProgress) {
     seekAndWait(s, () => {
       if (settled) return;
       // Create the stream only now: the video sits at the trim start and is
-      // about to play. Video only – combining the video element's audio track
-      // with a canvas stream can produce WebM files that Chrome cannot play.
-      const src = recCanvas.captureStream(30);
+      // about to play. Keep only the video track, so no audio is mixed in.
+      let src;
+      try {
+        src = new MediaStream(video.captureStream(30).getVideoTracks());
+      } catch (err) {
+        settle(null, err);
+        return;
+      }
       mime = pickMime();
       rec = new MediaRecorder(
         src,
@@ -1075,18 +1059,6 @@ function recordTrimmedRange(onProgress) {
         }
         finish();
       };
-      // Draw the first frame immediately: the frame at the trim start is now
-      // actually displayed, so the recording can't begin with a stale frame.
-      // Then keep drawing inside requestAnimationFrame: the canvas is presented
-      // in the same display cycle, which Firefox requires for captureStream.
-      const cctx = recCanvas.getContext('2d');
-      cctx.drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
-      const drawFn = () => {
-        if (settled) return;
-        cctx.drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
-        rafDraw = requestAnimationFrame(drawFn);
-      };
-      rafDraw = requestAnimationFrame(drawFn);
       try {
         rec.start(250);
         video.play().catch(() => settle(null, new Error('playback')));
