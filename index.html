@@ -7,6 +7,12 @@
 <meta name="description" content="Golf swing analysis: play back a swing video in slow motion and overlay lines and circles to check posture.">
 <title>Golf Swing Analysis</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Golf Swing">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -167,5 +173,16 @@
 </footer>
 
 <script src="app.js"></script>
+
+<script>
+// Installable / offline-capable app (PWA) when served over http(s): the first
+// visit caches the app, so it can be added to the home screen and used offline
+// on phones without a web server. On file:// (local opening) this is skipped.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>

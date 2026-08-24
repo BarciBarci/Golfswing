@@ -73,11 +73,37 @@ The iPhone has no APK like Android, so the web app is the way to go:
 
 Everything still runs locally – no upload, no account.
 
+### Install on your phone as an offline app (no web server needed)
+
+The app is an installable web app (PWA): open it once on your phone, add it to
+the home screen – afterwards it starts from its own icon and **works offline**
+without a web server and without internet.
+
+1. On the phone, open **https://BarciBarci.github.io/Golfswing/**.
+2. Add the app to the home screen:
+   - **Android (Chrome):** menu ⋮ → **„Add to Home screen“** (or **„Install
+     app“** when it is offered) – an icon appears on the home screen.
+   - **iPhone (Safari):** Share button (□↑) → **„Add to Home Screen“**.
+3. Start the app from the home-screen icon. The first visit (with internet)
+   caches the app; **from then on it opens offline** – no server, no
+   connection required.
+
+Everything still runs on the phone itself: videos are chosen from the device
+file picker and **never leave the phone**. When you push an update to GitHub,
+wait about a minute, then open the app online once – the new version is
+loaded automatically and cached again.
+
+**Alternative without the hosted page:** Download the repository as a ZIP
+(GitHub → green **„Code“** button → **„Download ZIP“**), unpack it and open
+`index.html` locally – on Android with **Firefox** (the file manager offers
+„Open with Firefox“), on iPhone with an HTML viewer app (e.g. „Documents“).
+The app is designed to work from `file://` as well.
+
 ### Tip: host on GitHub Pages instead
 
 Once the project is pushed to GitHub (see below), the same page is available
-anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer
-in the same Wi-Fi needed. „Add to Home Screen“ works there the same way.
+anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer in the
+same Wi-Fi needed. „Add to Home Screen“ works there the same way.
 
 ## Publish on GitHub
 
