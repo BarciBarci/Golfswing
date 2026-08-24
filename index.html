@@ -167,5 +167,84 @@
 </footer>
 
 <script src="app.js"></script>
+
+<script>
+/* Temporary Firefox diagnostic – removed once recording works in Firefox */
+(function () {
+  const btn = document.createElement('button');
+  btn.textContent = '🔍 Run diagnostic';
+  btn.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99999;padding:10px 14px;border-radius:8px;border:1px solid #30d158;background:#0f1115;color:#e8eaed;cursor:pointer;font-size:14px;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'position:fixed;left:8px;right:8px;bottom:52px;z-index:99998;max-height:60vh;overflow:auto;background:rgba(0,0,0,0.92);color:#8aff9e;font:11px monospace;padding:8px;border:1px solid #333;border-radius:8px;white-space:pre-wrap;';
+  const out = document.createElement('pre');
+  out.style.margin = '0';
+  panel.appendChild(out);
+  document.body.appendChild(btn);
+  document.body.appendChild(panel);
+  let results = '';
+  const log = (m) => { results += m + '\n'; out.textContent = results; };
+  btn.addEventListener('click', async () => {
+    results = '';
+    log('=== Golf Swing Analysis diagnostic ===');
+    log('UA: ' + navigator.userAgent);
+    log('MediaRecorder: ' + (typeof MediaRecorder) + ' | canvas.captureStream: ' + (typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream));
+    if (typeof MediaRecorder === 'undefined') { log('MediaRecorder NOT SUPPORTED'); return; }
+    for (const c of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']) {
+      try { log('isTypeSupported ' + JSON.stringify(c) + ' = ' + MediaRecorder.isTypeSupported(c)); } catch (e) { log('isTypeSupported threw for ' + c + ': ' + e.message); }
+    }
+    if (!video.src) { log('NO VIDEO LOADED - load a video first, then run again'); return; }
+    log('duration=' + video.duration + ' vw=' + video.videoWidth + ' vh=' + video.videoHeight + ' readyState=' + video.readyState + ' error=' + (video.error ? video.error.code : 'none'));
+    const wasMuted = video.muted;
+    video.pause();
+    const seek = (t) => new Promise((res) => { const done = () => { video.removeEventListener('seeked', done); res(); }; video.addEventListener('seeked', done); video.currentTime = t; setTimeout(res, 3000); });
+    await seek(1);
+    const ctBefore = video.currentTime;
+    video.playbackRate = 1;
+    video.muted = true;
+    try { await video.play(); log('play() resolved'); } catch (e) { log('play() rejected: ' + e.name + ' ' + e.message); }
+    await new Promise((r) => setTimeout(r, 1200));
+    log('currentTime advanced: ' + ctBefore.toFixed(3) + ' -> ' + video.currentTime.toFixed(3));
+    video.pause();
+    const cv = document.createElement('canvas');
+    cv.width = video.videoWidth || 640; cv.height = video.videoHeight || 360;
+    cv.style.cssText = 'position:fixed;top:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:2147483647;';
+    document.body.appendChild(cv);
+    const cctx = cv.getContext('2d');
+    const mime = pickMime();
+    log('pickMime() -> ' + JSON.stringify(mime));
+    const stream = cv.captureStream(30);
+    log('stream tracks: ' + stream.getTracks().map((t) => t.kind + ':' + t.readyState).join(' | '));
+    let rec = null;
+    try {
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : { videoBitsPerSecond: 8000000 });
+      log('recorder mimeType: ' + rec.mimeType + ' state=' + rec.state);
+    } catch (e) { log('new MediaRecorder threw: ' + e.message); return; }
+    const chunks = [];
+    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) { chunks.push(ev.data); log('  dataavailable +' + ev.data.size + ' (total ' + chunks.reduce((a, b) => a + b.size, 0) + ')'); } };
+    rec.onstop = () => log('onstop fired, chunks=' + chunks.length);
+    rec.onerror = (e) => log('recorder onerror: ' + (e && e.error ? e.error.name + ' ' + e.error.message : 'unknown'));
+    let frames = 0;
+    let drawErr = null;
+    const iv = setInterval(() => { try { cctx.drawImage(video, 0, 0, cv.width, cv.height); frames++; } catch (e) { drawErr = e.message; clearInterval(iv); } }, 33);
+    try {
+      rec.start(250);
+      log('rec.start(250) ok');
+    } catch (e) { log('rec.start threw: ' + e.message); }
+    await seek(0.2);
+    try { await video.play(); } catch (e) { log('play2 rejected: ' + e.message); }
+    await new Promise((r) => setTimeout(r, 3000));
+    log('after 3s: frames drawn=' + frames + ' drawErr=' + (drawErr || 'none') + ' video ct=' + video.currentTime.toFixed(2) + ' chunks=' + chunks.length);
+    video.pause();
+    try { rec.stop(); log('rec.stop() called'); } catch (e) { log('rec.stop threw: ' + e.message); }
+    await new Promise((r) => setTimeout(r, 1200));
+    const blob = new Blob(chunks, { type: rec.mimeType || mime });
+    log('FINAL: chunks=' + chunks.length + ' blob.size=' + blob.size + ' frames=' + frames);
+    log('=== done - please copy this text ===');
+    video.muted = wasMuted;
+    clearInterval(iv);
+    cv.remove();
+  });
+})();
+</script>
 </body>
 </html>
