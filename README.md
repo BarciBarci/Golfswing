@@ -24,17 +24,6 @@ Android. **Nothing is uploaded**; all data stays on your device.
 - 📦 **.glf project format**: save the video together with the trim and all overlays in one file and reopen it later – lossless, because the original video is included
 - ⌨️ **Keyboard**: `Space` play/pause · `←`/`→` single frame · `L`/`C`/`M` tool · `[`/`]` thickness · `Esc` cancel · `Ctrl+Z` undo
 
-## Run locally
-
-Simplest: open `index.html` in your browser (double-click). Alternatively, use
-a local server:
-
-```sh
-# Python
-python3 -m http.server 8000
-# then open http://localhost:8000
-```
-
 ## Use on your phone (iPhone / Android)
 
 ### Android – use the web app in the browser (no install needed)
@@ -104,6 +93,17 @@ The app is designed to work from `file://` as well.
 Once the project is pushed to GitHub (see below), the same page is available
 anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer in the
 same Wi-Fi needed. „Add to Home Screen“ works there the same way.
+
+## Run locally
+
+Simplest: open `index.html` in your browser (double-click). Alternatively, use
+a local server:
+
+```sh
+# Python
+python3 -m http.server 8000
+# then open http://localhost:8000
+```
 
 ## Publish on GitHub
 
