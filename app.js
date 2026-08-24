@@ -917,6 +917,14 @@ function recordTrimmedRange(onProgress) {
     const recCanvas = document.createElement('canvas');
     recCanvas.width = video.videoWidth || 1280;
     recCanvas.height = video.videoHeight || 720;
+    // Firefox only delivers frames from canvas.captureStream() when the canvas
+    // is actually rendered (presented by the compositor). Keep it in the DOM
+    // but off-screen, so recording also works in Firefox. Chrome does not care.
+    recCanvas.style.cssText =
+      'position:fixed;left:-10000px;top:0;' +
+      'width:' + recCanvas.width + 'px;height:' + recCanvas.height + 'px;' +
+      'pointer-events:none;';
+    document.body.appendChild(recCanvas);
     let drawTimer = null;
     let rec = null;
     let mime = '';
@@ -935,6 +943,7 @@ function recordTrimmedRange(onProgress) {
         clearTimeout(resolveTimer);
         resolveTimer = null;
       }
+      if (recCanvas.parentNode) recCanvas.parentNode.removeChild(recCanvas);
       video.removeEventListener('ended', onEnded);
       video.muted = wasMuted;
     };
