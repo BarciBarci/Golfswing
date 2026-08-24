@@ -68,7 +68,7 @@ No install needed – the same app runs in the phone's browser:
 
 ### Tip: host on GitHub Pages instead
 
-Once the project is pushed to GitHub (see below), the page is available
+Once the project is pushed to GitHub, the page is available
 anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer in the
 same Wi-Fi needed. „Add to Home Screen“ works there the same way.
 
@@ -83,25 +83,6 @@ a local server:
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
-
-## Publish on GitHub
-
-The app needs no backend and works directly via GitHub Pages:
-
-1. Create a new repository on GitHub (e.g. `Golfswing`).
-2. Initialize a Git repository in this folder and push:
-
-   ```sh
-   git init
-   git add .
-   git commit -m "Golf swing analysis"
-   git branch -M main
-   git remote add origin https://github.com/BarciBarci/Golfswing.git
-   git push -u origin main
-   ```
-
-3. On GitHub: **Settings → Pages → Source: Branch `main` / folder `/ (root)`** and save.
-4. The app is then available at `https://BarciBarci.github.io/Golfswing/` – also from your phone.
 
 ## How to use
 
@@ -233,9 +214,3 @@ project with all lines and circles.
   (see the HEVC note above) bakes the rotation in and it records upright.
 - **Privacy:** No servers, no analytics, no cookies – the app runs fully
   offline.
-
-## Ideas for later
-
-- Export a still frame as an image (with the drawn lines)
-- Compare multiple videos in one session
-- Play the swing in a loop
