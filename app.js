@@ -918,12 +918,13 @@ function recordTrimmedRange(onProgress) {
     recCanvas.width = video.videoWidth || 1280;
     recCanvas.height = video.videoHeight || 720;
     // Firefox only delivers frames from canvas.captureStream() when the canvas
-    // is actually rendered (presented by the compositor). Keep it in the DOM
-    // but off-screen, so recording also works in Firefox. Chrome does not care.
+    // is actually presented by the compositor. Off-screen canvases are culled
+    // in Firefox, so keep it inside the viewport but tiny and nearly invisible:
+    // the stream captures the canvas bitmap at full resolution regardless of
+    // its CSS size. Chrome delivers frames either way.
     recCanvas.style.cssText =
-      'position:fixed;left:-10000px;top:0;' +
-      'width:' + recCanvas.width + 'px;height:' + recCanvas.height + 'px;' +
-      'pointer-events:none;';
+      'position:fixed;top:0;right:0;width:2px;height:2px;' +
+      'opacity:0.01;pointer-events:none;z-index:2147483647;';
     document.body.appendChild(recCanvas);
     let drawTimer = null;
     let rec = null;
