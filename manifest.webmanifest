@@ -1,7 +1,7 @@
 {
   "name": "Golf Swing Analysis",
   "short_name": "Golf Swing",
-  "description": "Analyze golf swings: play back the video in slow motion and overlay lines and circles to check your posture. Runs fully in the browser – nothing is uploaded.",
+  "description": "Analyze golf swings: play back the video in slow motion and overlay lines and circles to check your posture. Runs fully in the browser \u2013 nothing is uploaded.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -20,12 +20,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }
