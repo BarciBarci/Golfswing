@@ -260,6 +260,46 @@
       await new Promise((r) => setTimeout(r, 1000));
       log('B FINAL: chunks=' + chunks2.length + ' total=' + chunks2.reduce((a, b) => a + b.size, 0));
     } catch (e) { log('B threw: ' + e.message); }
+    // Variant C/D/E: video.captureStream with video-only codec strings
+    for (const mm of ['video/webm;codecs=vp8', 'video/webm']) {
+      log('--- Variant ' + (mm.indexOf('vp8') !== -1 ? 'C' : 'D') + ': video.captureStream + ' + JSON.stringify(mm) + ' ---');
+      try {
+        log('isTypeSupported ' + JSON.stringify(mm) + ' = ' + MediaRecorder.isTypeSupported(mm));
+        const vs2 = new MediaStream(video.captureStream(30).getVideoTracks());
+        const rec3 = new MediaRecorder(vs2, { mimeType: mm, videoBitsPerSecond: 8000000 });
+        const ch3 = [];
+        rec3.ondataavailable = (ev) => { if (ev.data && ev.data.size) { ch3.push(ev.data); log('  C/D dataavailable +' + ev.data.size); } };
+        rec3.onstop = () => log('C/D onstop, chunks=' + ch3.length);
+        rec3.onerror = (e) => log('C/D onerror: ' + (e && e.error ? e.error.message : 'unknown'));
+        rec3.start(250);
+        await seek(0.2);
+        try { await video.play(); } catch (e) { log('C/D play rejected: ' + e.message); }
+        await new Promise((r) => setTimeout(r, 2500));
+        video.pause();
+        rec3.stop();
+        await new Promise((r) => setTimeout(r, 1000));
+        log('C/D FINAL: chunks=' + ch3.length + ' total=' + ch3.reduce((a, b) => a + b.size, 0));
+      } catch (e) { log('C/D threw: ' + e.message); }
+    }
+    // Variant E: video.captureStream WITH audio (full stream), vp8+opus
+    log('--- Variant E: video.captureStream with audio, video/webm;codecs=vp8,opus ---');
+    try {
+      const vs3 = video.captureStream(30);
+      log('E tracks: ' + vs3.getTracks().map((t) => t.kind + ':' + t.readyState).join(' | '));
+      const rec4 = new MediaRecorder(vs3, { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 8000000 });
+      const ch4 = [];
+      rec4.ondataavailable = (ev) => { if (ev.data && ev.data.size) { ch4.push(ev.data); log('  E dataavailable +' + ev.data.size); } };
+      rec4.onstop = () => log('E onstop, chunks=' + ch4.length);
+      rec4.onerror = (e) => log('E onerror: ' + (e && e.error ? e.error.message : 'unknown'));
+      rec4.start(250);
+      await seek(0.2);
+      try { await video.play(); } catch (e) { log('E play rejected: ' + e.message); }
+      await new Promise((r) => setTimeout(r, 2500));
+      video.pause();
+      rec4.stop();
+      await new Promise((r) => setTimeout(r, 1000));
+      log('E FINAL: chunks=' + ch4.length + ' total=' + ch4.reduce((a, b) => a + b.size, 0));
+    } catch (e) { log('E threw: ' + e.message); }
     log('=== done - please copy this text ===');
     video.muted = wasMuted;
     if (raf !== null) cancelAnimationFrame(raf);

@@ -830,11 +830,14 @@ function setTrimButtonsDisabled(disabled) {
 }
 
 function pickMime() {
+  // The recording is video-only, so use codec strings without an audio codec:
+  // some browsers (Firefox) fail to mux a stream whose codecs string mentions
+  // an audio codec when no audio track is present.
   const candidates = [
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1.42E01E',
     'video/mp4',
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
     'video/webm',
   ];
   for (const c of candidates) {
