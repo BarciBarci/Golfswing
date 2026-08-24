@@ -35,11 +35,55 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
+## Use on your phone (iPhone / Android)
+
+### Android – use the web app in the browser (no install needed)
+
+You don't need an app for this – the web app runs directly in Chrome:
+
+1. On your computer, start a local server in the project folder:
+
+   ```sh
+   python3 -m http.server 8000
+   ```
+
+2. Find your computer's IP address in the Wi-Fi network
+   (`ipconfig` on Windows, `ifconfig`/`ip a` on Mac/Linux, e.g. `192.168.1.42`).
+
+3. On the Android phone (same Wi-Fi), open in Chrome:
+
+   ```
+   http://192.168.1.42:8000
+   ```
+
+4. Optional, for an app-like shortcut on the home screen:
+   Chrome menu (⋮) → **„Add to Home screen“** → the shortcut opens the web app
+   directly.
+
+Everything runs locally – the video and your overlays stay on your phone.
+
+### iPhone – use the web app (no install needed)
+
+The iPhone has no APK like Android, so the web app is the way to go:
+
+1. Start the local server on your computer (see above).
+2. On the iPhone (same Wi-Fi), open `http://192.168.1.42:8000` in Safari.
+3. Share button → **„Add to Home Screen“** – the web app then opens
+   app-like from its own icon on the home screen.
+
+Everything still runs locally – no upload, no account.
+
+### Tip: host on GitHub Pages instead
+
+Once the project is pushed to GitHub (see below), the same page is available
+anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer
+in the same Wi-Fi needed. „Add to Home Screen“ works there the same way.
+
 ## Publish on GitHub
 
 The app needs no backend and works directly via GitHub Pages:
 
-1. Create a new repository on GitHub (e.g. `golf-schwunganalyse`).
+1. Create a new repository on GitHub (e.g. `Golfswing`).
 2. Initialize a Git repository in this folder and push:
 
    ```sh
@@ -47,12 +91,12 @@ The app needs no backend and works directly via GitHub Pages:
    git add .
    git commit -m "Golf swing analysis"
    git branch -M main
-   git remote add origin https://github.com/YOUR-USERNAME/golf-schwunganalyse.git
+   git remote add origin https://github.com/BarciBarci/Golfswing.git
    git push -u origin main
    ```
 
 3. On GitHub: **Settings → Pages → Source: Branch `main` / folder `/ (root)`** and save.
-4. The app is then available at `https://YOUR-USERNAME.github.io/golf-schwunganalyse/` – also from your phone.
+4. The app is then available at `https://BarciBarci.github.io/Golfswing/` – also from your phone.
 
 ## How to use
 
@@ -68,23 +112,14 @@ line along the spine, and set the time window (from/to) tightly around that
 moment. While playing, you can see at exactly the right position whether the
 alignment is correct.
 
-## Android app (.apk / F-Droid)
-
-The `android/` folder contains a minimal **WebView wrapper** that packages the
-web app as an Android app. It runs fully offline, uses no Play services and no
-proprietary libraries, so it is suitable for **F-Droid**. See
-[`android/README.md`](android/README.md) for build instructions, and
-`android/fdroid-metadata.example.yml` for the F-Droid recipe template.
-
 ## Project structure
 
 ```
-golf-schwunganalyse/
+Golfswing/
 ├── index.html   # UI structure
 ├── styles.css   # Styling (dark theme, mobile-optimized)
 ├── app.js       # Logic: video, trim, speed, drawing, .glf
-├── android/     # Android WebView wrapper (APK / F-Droid)
-├── LICENSE      # MIT license (required by F-Droid)
+├── LICENSE      # MIT license
 └── README.md
 ```
 

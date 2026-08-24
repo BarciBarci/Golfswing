@@ -140,6 +140,9 @@ function onLoadedMetadata() {
     return;
   }
   setMode('trim'); // trim first, then analyze
+  if (video.currentTime === 0) {
+    video.currentTime = 0.001; // force decode so the first frame is shown
+  }
 }
 
 function fitStage() {
@@ -864,6 +867,8 @@ function seekAndWait(target, done) {
 // Always records through a canvas: drawImage applies the rotation metadata of
 // phone videos correctly (video.captureStream ignores it in Chromium and would
 // output the trimmed video rotated by 90°).
+// The function is designed to never hang: every path either resolves with the
+// recorded video or rejects with an error.
 function recordTrimmedRange(onProgress) {
   return new Promise((resolve, reject) => {
     if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
@@ -877,34 +882,144 @@ function recordTrimmedRange(onProgress) {
       reject(new Error('short'));
       return;
     }
+    // End tolerance: stop shortly before the trim end. Relative to the range
+    // length so very short ranges still record (5 % of the range, max 0.4 s).
+    const tol = Math.min(0.4, Math.max(0.05, (e - s) * 0.05));
     const prevRate = video.playbackRate;
+    const wasMuted = video.muted;
     video.pause();
     video.playbackRate = 1;
+    // Mute during recording: muted autoplay is always allowed, so playback
+    // works even on file:// pages where unmuted play() without a fresh user
+    // gesture is blocked. (The recording is video-only anyway.)
+    video.muted = true;
 
     const recCanvas = document.createElement('canvas');
     recCanvas.width = video.videoWidth || 1280;
     recCanvas.height = video.videoHeight || 720;
     let drawTimer = null;
     let rec = null;
+    let mime = '';
     let chunks = [];
+    let settled = false;
+    let stallTicks = 0;
+    let lastPos = null;
+    let sawAdvance = false;
+    let resolveTimer = null;
+
+    const cleanup = () => {
+      if (drawTimer) clearInterval(drawTimer);
+      drawTimer = null;
+      clearTimeout(overallTimeout);
+      if (resolveTimer !== null) {
+        clearTimeout(resolveTimer);
+        resolveTimer = null;
+      }
+      video.removeEventListener('ended', onEnded);
+      video.muted = wasMuted;
+    };
+
+    // Single exit point: restore the video state and either resolve or reject.
+    const settle = (blob, err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      video.playbackRate = prevRate;
+      try {
+        if (rec && rec.state !== 'inactive') rec.stop();
+      } catch (err2) {
+        /* ignore */
+      }
+      if (err) reject(err);
+      else resolve(blob);
+    };
+
+    // Build the blob from everything recorded so far.
+    const finish = () => {
+      if (settled) return;
+      const blob = new Blob(chunks, { type: (rec && rec.mimeType) || mime || 'video/webm' });
+      if (!chunks.length || blob.size < 100) settle(null, new Error('empty'));
+      else settle(blob, null);
+    };
+
+    const stopRecording = () => {
+      video.pause();
+      if (rec && rec.state !== 'inactive') {
+        rec.stop();
+        // Safety: MediaRecorder must always produce a result. If onstop does
+        // not fire within 3 s (a known Chromium quirk), finish with the chunks
+        // collected so far instead of hanging.
+        if (resolveTimer === null) {
+          resolveTimer = setTimeout(finish, 3000);
+        }
+      }
+    };
+    const onEnded = () => stopRecording();
+    video.addEventListener('ended', onEnded);
+
+    // Last safety net: never hang forever. If chunks exist, resolve with what
+    // we have (a slightly short video beats a stuck progress bar).
+    const overallTimeout = setTimeout(() => {
+      if (settled) return;
+      const blob = new Blob(chunks, { type: (rec && rec.mimeType) || mime || 'video/webm' });
+      if (!chunks.length || blob.size < 100) settle(null, new Error('timeout'));
+      else settle(blob, null);
+    }, Math.max(30000, (e - s) * 2000 + 15000));
 
     const onTick = () => {
-      if (video.currentTime >= e) {
-        video.pause();
-        if (rec && rec.state !== 'inactive') rec.stop();
-      } else {
-        const pct = Math.min(100, Math.round(((video.currentTime - s) / (e - s)) * 100));
-        if (onProgress) onProgress(pct);
-        requestAnimationFrame(onTick);
+      if (settled) return;
+      // Stop at the true end: the 'ended' event, or the position reaching the
+      // trim end. Many videos report a duration slightly longer than the real
+      // playable content, so allow a tolerance instead of demanding the exact
+      // end position.
+      if (video.ended || video.currentTime >= e - tol) {
+        stopRecording();
+        return;
       }
+      const pos = video.currentTime;
+      if (lastPos === null) {
+        lastPos = pos;
+      } else if (pos === lastPos) {
+        stallTicks++;
+        // Only treat a stall as a problem once the video has actually started
+        // advancing. Decoder warm-up after play() can take a moment, so the
+        // not-yet-started case gets a much longer allowance (3 s) than a stall
+        // after playback has begun (~0.35 s).
+        const threshold = sawAdvance ? 20 : 180;
+        if (stallTicks > threshold) {
+          if (!sawAdvance) {
+            settle(null, new Error('playback'));
+            return;
+          }
+          // Playback has stopped advancing. Near the trim end this simply
+          // means the real content ended (the reported duration is too long) –
+          // the recorded range is complete enough. Further away from the end
+          // playback was probably blocked.
+          const pct = Math.min(100, Math.round(((pos - s) / (e - s)) * 100));
+          if (pct >= 90 || pos >= e - tol) {
+            stopRecording();
+          } else {
+            settle(null, new Error('playback'));
+          }
+          return;
+        }
+      } else {
+        lastPos = pos;
+        sawAdvance = true;
+        stallTicks = 0;
+      }
+      const pct = Math.min(100, Math.round(((pos - s) / (e - s)) * 100));
+      if (onProgress) onProgress(pct);
+      requestAnimationFrame(onTick);
     };
 
     seekAndWait(s, () => {
+      if (settled) return;
       // Create the stream only now: the video sits at the trim start and is
       // about to play. Video only – combining the video element's audio track
       // with a canvas stream can produce WebM files that Chrome cannot play.
       const src = recCanvas.captureStream(30);
-      const mime = pickMime();
+      mime = pickMime();
       rec = new MediaRecorder(
         src,
         mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : { videoBitsPerSecond: 8000000 }
@@ -913,14 +1028,11 @@ function recordTrimmedRange(onProgress) {
         if (ev.data && ev.data.size) chunks.push(ev.data);
       };
       rec.onstop = () => {
-        if (drawTimer) clearInterval(drawTimer);
-        video.playbackRate = prevRate;
-        const blob = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' });
-        if (!chunks.length || blob.size < 100) {
-          reject(new Error('empty'));
-          return;
+        if (resolveTimer !== null) {
+          clearTimeout(resolveTimer);
+          resolveTimer = null;
         }
-        resolve(blob);
+        finish();
       };
       // Draw the first frame immediately: the frame at the trim start is now
       // actually displayed, so the recording can't begin with a stale frame.
@@ -930,12 +1042,10 @@ function recordTrimmedRange(onProgress) {
       }, 33);
       try {
         rec.start(250);
-        video.play().catch(() => {});
+        video.play().catch(() => settle(null, new Error('playback')));
         requestAnimationFrame(onTick);
       } catch (err) {
-        if (drawTimer) clearInterval(drawTimer);
-        video.playbackRate = prevRate;
-        reject(err);
+        settle(null, err);
       }
     });
   });
@@ -978,10 +1088,15 @@ function exportTrimmedVideo() {
     .catch((err) => {
       state.recording = false;
       setTrimButtonsDisabled(false);
+      const code = err && err.message;
       trimStatus.textContent =
-        err && err.message === 'empty'
-          ? 'Recording failed – no video data was captured. Please try again.'
-          : 'Recording failed. Please try again.';
+        code === 'playback'
+          ? 'Playback stalled – the video could not be played through. Please try again.'
+          : code === 'timeout'
+            ? 'Recording timed out – please try again.'
+            : code === 'empty'
+              ? 'Recording failed – no video data was captured. Please try again.'
+              : 'Recording failed. Please try again.';
     });
 }
 
@@ -1207,10 +1322,15 @@ async function saveGlf() {
       });
     } catch (err) {
       state.recording = false;
+      const code = err && err.message;
       glfStatus.textContent =
-        err && err.message === 'empty'
-          ? 'Could not create the trimmed video – no video data was captured. Please try again.'
-          : 'Could not create the trimmed video.';
+        code === 'playback'
+          ? 'Playback stalled – the video could not be played through. Please try again.'
+          : code === 'timeout'
+            ? 'Creating the trimmed video timed out – please try again.'
+            : code === 'empty'
+              ? 'Could not create the trimmed video – no video data was captured. Please try again.'
+              : 'Could not create the trimmed video.';
       return;
     }
     state.recording = false;
@@ -1219,7 +1339,7 @@ async function saveGlf() {
   }
 
   const meta = {
-    app: 'golf-schwunganalyse',
+    app: 'golf-swing-analysis',
     version: 1,
     videoName: state.videoName || 'video',
     videoMime: videoBlob.type || 'video/mp4',
@@ -1257,7 +1377,7 @@ function exportOverlays() {
     return;
   }
   const data = {
-    app: 'golf-schwunganalyse',
+    app: 'golf-swing-analysis',
     version: 1,
     overlays: state.overlays.map((o) => ({
       id: o.id,

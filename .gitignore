@@ -1,0 +1,18 @@
+# Local test videos and exported files
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+*.glf
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
