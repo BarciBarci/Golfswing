@@ -126,7 +126,18 @@ function loadFile(file) {
 function onLoadedMetadata() {
   const w = video.videoWidth;
   const h = video.videoHeight;
-  if (!w || !h) return;
+  if (!w || !h) {
+    // No decodable frame: the browser cannot decode the codec of this file
+    // (e.g. HEVC/H.265 from a phone camera, which Chrome on Linux cannot
+    // play). Give clear feedback instead of a silently broken player.
+    alert(
+      'This video cannot be decoded by your browser. It is probably an ' +
+      'unsupported format (e.g. HEVC/H.265 from a phone). Convert it to MP4 ' +
+      '(H.264) and load it again.'
+    );
+    resetToUpload();
+    return;
+  }
   state.ar = w / h;
   canvas.width = w;
   canvas.height = h;
@@ -140,7 +151,10 @@ function onLoadedMetadata() {
     return;
   }
   setMode('trim'); // trim first, then analyze
-  if (video.currentTime === 0) {
+  // Show the first frame. Some files report an infinite/unknown duration
+  // (broken WebM metadata); seeking such a file can freeze the page, so only
+  // force the decode when the duration is known.
+  if (video.currentTime === 0 && isFinite(video.duration)) {
     video.currentTime = 0.001; // force decode so the first frame is shown
   }
 }
@@ -321,7 +335,7 @@ function onTimeUpdate() {
   if (state.previewing) {
     const dur = video.duration || 0;
     const e = isFinite(state.trim.end) ? Math.min(state.trim.end, dur) : dur;
-    if (video.currentTime >= e) {
+    if (video.ended || video.currentTime >= e) {
       state.previewing = false;
       video.pause();
       video.currentTime = state.trim.start;
@@ -343,7 +357,9 @@ function updateTimeDisplay() {
   const t = video.currentTime || 0;
   const d = video.duration || 0;
   const frame = Math.floor(t * state.fps) + 1;
-  timeDisplay.textContent = fmt(t) + ' · F' + frame + ' / ' + fmt(d);
+  timeDisplay.textContent = isFinite(d)
+    ? fmt(t) + ' · F' + frame + ' / ' + fmt(d)
+    : fmt(t) + ' · F' + frame;
   timeDisplay.title = 'Frame rate: ' + state.fps + ' fps';
 }
 
@@ -709,28 +725,31 @@ function updateTrimUI() {
 }
 
 function updateTrimDisplay() {
-  if (!isFinite(video.duration)) return;
-  const dur = video.duration;
-  const s = Math.max(0, Math.min(state.trim.start, dur));
-  const e = isFinite(state.trim.end) ? Math.min(state.trim.end, dur) : dur;
-  if (state.mode === 'trim') {
+  const dur = video.duration || 0;
+  const durFinite = isFinite(dur);
+  const s = Math.max(0, state.trim.start);
+  const e = isFinite(state.trim.end) ? state.trim.end : dur;
+  const eFinite = isFinite(e);
+  if (state.mode === 'trim' && durFinite) {
     scrubber.min = 0;
     scrubber.max = Math.round(dur * 100);
     const sp = (s / dur) * 100;
-    const ep = (e / dur) * 100;
+    const ep = (Math.min(e, dur) / dur) * 100;
     scrubber.style.background =
       'linear-gradient(90deg, #3a4356 0%, #3a4356 ' + sp + '%, var(--accent) ' + sp +
       '%, var(--accent) ' + ep + '%, #3a4356 ' + ep + '%, #3a4356 100%)';
-  } else {
+  } else if (state.mode === 'analysis' && durFinite && eFinite) {
     scrubber.min = Math.round(s * 100);
-    scrubber.max = Math.round(e * 100);
+    scrubber.max = Math.round(Math.min(e, dur) * 100);
     scrubber.style.background = 'var(--accent)';
   }
-  trimLengthEl.textContent = 'Length: ' + fmtTrim(Math.max(0, e - s)) + ' s';
+  trimLengthEl.textContent = eFinite
+    ? 'Length: ' + fmtTrim(Math.max(0, e - s)) + ' s'
+    : 'Length: whole video';
   trimBannerText.textContent =
-    s <= 0 && e >= dur
+    s <= 0 && (!eFinite || e >= dur)
       ? 'No trim – analyzing the whole video'
-      : 'Trim: ' + fmtTrim(s) + ' s to ' + fmtTrim(e) + ' s';
+      : 'Trim: ' + fmtTrim(s) + ' s to ' + (eFinite ? fmtTrim(e) + ' s' : 'end');
 }
 
 function onTrimInput() {
@@ -878,6 +897,7 @@ function recordTrimmedRange(onProgress) {
     const dur = video.duration || 0;
     const s = Math.max(0, Math.min(state.trim.start, dur));
     const e = isFinite(state.trim.end) ? Math.min(state.trim.end, dur) : dur;
+    const eFinite = isFinite(e);
     if (e - s < 0.1) {
       reject(new Error('short'));
       return;
@@ -993,10 +1013,12 @@ function recordTrimmedRange(onProgress) {
           }
           // Playback has stopped advancing. Near the trim end this simply
           // means the real content ended (the reported duration is too long) –
-          // the recorded range is complete enough. Further away from the end
+          // the recorded range is complete enough. The same applies when the
+          // total duration is unknown (some WebM files report Infinity) and we
+          // have already recorded a little bit. Further away from the end
           // playback was probably blocked.
           const pct = Math.min(100, Math.round(((pos - s) / (e - s)) * 100));
-          if (pct >= 90 || pos >= e - tol) {
+          if (pct >= 90 || pos >= e - tol || (!eFinite && pos > s + 0.3)) {
             stopRecording();
           } else {
             settle(null, new Error('playback'));
@@ -1008,8 +1030,10 @@ function recordTrimmedRange(onProgress) {
         sawAdvance = true;
         stallTicks = 0;
       }
-      const pct = Math.min(100, Math.round(((pos - s) / (e - s)) * 100));
-      if (onProgress) onProgress(pct);
+      const pct = eFinite
+        ? Math.min(100, Math.round(((pos - s) / (e - s)) * 100))
+        : Math.round((pos - s) * 10) / 10; // seconds when the total is unknown
+      if (onProgress) onProgress(pct, !eFinite);
       requestAnimationFrame(onTick);
     };
 
@@ -1074,8 +1098,10 @@ function exportTrimmedVideo() {
   trimStatus.textContent = 'Preparing recording…';
   setTrimButtonsDisabled(true);
 
-  recordTrimmedRange((pct) => {
-    trimStatus.textContent = 'Recording range… ' + pct + ' %';
+  recordTrimmedRange((pct, unknownEnd) => {
+    trimStatus.textContent = unknownEnd
+      ? 'Recording… ' + pct + ' s'
+      : 'Recording range… ' + pct + ' %';
   })
     .then((blob) => {
       state.recording = false;
@@ -1317,8 +1343,10 @@ async function saveGlf() {
     glfStatus.textContent = 'Preparing trimmed video…';
     state.recording = true;
     try {
-      videoBlob = await recordTrimmedRange((pct) => {
-        glfStatus.textContent = 'Preparing trimmed video… ' + pct + ' %';
+      videoBlob = await recordTrimmedRange((pct, unknownEnd) => {
+        glfStatus.textContent = unknownEnd
+          ? 'Preparing trimmed video… ' + pct + ' s'
+          : 'Preparing trimmed video… ' + pct + ' %';
       });
     } catch (err) {
       state.recording = false;

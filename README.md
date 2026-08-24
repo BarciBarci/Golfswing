@@ -206,6 +206,16 @@ project with all lines and circles.
 - **Formats:** MP4 with H.264 codec is most compatible. WebM works in
   Chrome/Firefox, MOV usually works too. Phone videos with rotation metadata
   are exported upright.
+- **HEVC/H.265 videos:** Phone cameras often record HEVC/H.265. Chrome on
+  Linux (and some Windows setups) cannot decode it – the app then shows
+  „This video cannot be decoded by your browser.“. Convert such videos to
+  MP4 (H.264), e.g. with ffmpeg:
+
+  ```sh
+  ffmpeg -i video.mp4 -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart video_h264.mp4
+  ```
+
+  …or set the phone camera to record H.264 instead of HEVC.
 - **Saving the trim as a file:** exporting creates a re-encoded copy of the
   range (WebM in Chrome/Firefox, MP4 in Safari). Recording runs in real time.
   In browsers without support, trimming still works – the cut is then just
