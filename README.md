@@ -26,73 +26,52 @@ Android. **Nothing is uploaded**; all data stays on your device.
 
 ## Use on your phone (iPhone / Android)
 
-### Android – use the web app in the browser (no install needed)
+### 📲 Recommended – Install the app ("Add to Home Screen")
 
-You don't need an app for this – the web app runs directly in Chrome:
+The recommended way: the app is installed on the home screen like a real app,
+starts full screen from its own icon and **works offline** – no web server and
+no internet needed after the first visit.
 
-1. On your computer, start a local server in the project folder:
-
-   ```sh
-   python3 -m http.server 8000
-   ```
-
-2. Find your computer's IP address in the Wi-Fi network
-   (`ipconfig` on Windows, `ifconfig`/`ip a` on Mac/Linux, e.g. `192.168.1.42`).
-
-3. On the Android phone (same Wi-Fi), open in Chrome:
-
-   ```
-   http://192.168.1.42:8000
-   ```
-
-4. Optional, for an app-like shortcut on the home screen:
-   Chrome menu (⋮) → **„Add to Home screen“** → the shortcut opens the web app
-   directly.
-
-Everything runs locally – the video and your overlays stay on your phone.
-
-### iPhone – use the web app (no install needed)
-
-The iPhone has no APK like Android, so the web app is the way to go:
-
-1. Start the local server on your computer (see above).
-2. On the iPhone (same Wi-Fi), open `http://192.168.1.42:8000` in Safari.
-3. Share button → **„Add to Home Screen“** – the web app then opens
-   app-like from its own icon on the home screen.
-
-Everything still runs locally – no upload, no account.
-
-### Install on your phone as an offline app (no web server needed)
-
-The app is an installable web app (PWA): open it once on your phone, add it to
-the home screen – afterwards it starts from its own icon and **works offline**
-without a web server and without internet.
-
-1. On the phone, open **https://BarciBarci.github.io/Golfswing/**.
+1. On the phone, open **https://BarciBarci.github.io/Golfswing/** once (with internet).
 2. Add the app to the home screen:
-   - **Android (Chrome):** menu ⋮ → **„Add to Home screen“** (or **„Install
-     app“** when it is offered) – an icon appears on the home screen.
+   - **Android (Chrome):** menu ⋮ → **„Add to Home screen“** – or tap **„Install
+     app“** when the browser offers it. An icon appears on the home screen.
    - **iPhone (Safari):** Share button (□↑) → **„Add to Home Screen“**.
-3. Start the app from the home-screen icon. The first visit (with internet)
-   caches the app; **from then on it opens offline** – no server, no
-   connection required.
+3. Done – start the app from the home-screen icon. It opens **offline, full
+   screen**, like a native app.
 
-Everything still runs on the phone itself: videos are chosen from the device
-file picker and **never leave the phone**. When you push an update to GitHub,
-wait about a minute, then open the app online once – the new version is
-loaded automatically and cached again.
+Everything runs on the phone itself: videos are chosen from the device file
+picker and **never leave the phone**. When you push an update to GitHub, wait
+about a minute, then open the app online once – the new version is loaded
+automatically and cached again.
 
-**Alternative without the hosted page:** Download the repository as a ZIP
-(GitHub → green **„Code“** button → **„Download ZIP“**), unpack it and open
-`index.html` locally – on Android with **Firefox** (the file manager offers
-„Open with Firefox“), on iPhone with an HTML viewer app (e.g. „Documents“).
-The app is designed to work from `file://` as well.
+### Alternative – Use the web app directly in the browser (no install)
+
+No install needed – the same app runs in the phone's browser:
+
+- Open **https://BarciBarci.github.io/Golfswing/** in Chrome (Android) or
+  Safari (iPhone).
+- **From your computer's local server** (same Wi-Fi): in the project folder run
+
+  ```sh
+  python3 -m http.server 8000
+  ```
+
+  then open `http://<computer-IP>:8000` on the phone – find the IP address
+  with `ipconfig` (Windows) or `ifconfig`/`ip a` (Mac/Linux), e.g.
+  `192.168.1.42`.
+- **Fully local, no server at all:** download the repository as a ZIP (GitHub
+  → green **„Code“** button → **„Download ZIP“**), unpack it and open
+  `index.html` – on Android with **Firefox** (the file manager offers
+  „Open with Firefox“), on iPhone with an HTML viewer app (e.g. „Documents“).
+  The app is designed to work from `file://` as well.
 
 ### Tip: host on GitHub Pages instead
 
-Once the project is pushed to GitHub (see below), the same page is available
+Once the project is pushed to GitHub (see below), the page is available
 anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer in the
 same Wi-Fi needed. „Add to Home Screen“ works there the same way.
+
 
 ## Run locally
 
