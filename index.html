@@ -207,7 +207,8 @@
     video.pause();
     const cv = document.createElement('canvas');
     cv.width = video.videoWidth || 640; cv.height = video.videoHeight || 360;
-    cv.style.cssText = 'position:fixed;top:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:2147483647;';
+    const ar = cv.height ? cv.width / cv.height : 0.75;
+    cv.style.cssText = 'position:fixed;bottom:12px;right:12px;width:135px;height:' + Math.round(135 / ar) + 'px;border:2px solid #30d158;border-radius:8px;background:#000;box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;z-index:2147483647;';
     document.body.appendChild(cv);
     const cctx = cv.getContext('2d');
     const mime = pickMime();
@@ -225,7 +226,9 @@
     rec.onerror = (e) => log('recorder onerror: ' + (e && e.error ? e.error.name + ' ' + e.error.message : 'unknown'));
     let frames = 0;
     let drawErr = null;
-    const iv = setInterval(() => { try { cctx.drawImage(video, 0, 0, cv.width, cv.height); frames++; } catch (e) { drawErr = e.message; clearInterval(iv); } }, 33);
+    let raf = null;
+    const drawFn = () => { try { cctx.drawImage(video, 0, 0, cv.width, cv.height); frames++; raf = requestAnimationFrame(drawFn); } catch (e) { drawErr = e.message; } };
+    raf = requestAnimationFrame(drawFn);
     try {
       rec.start(250);
       log('rec.start(250) ok');
@@ -241,7 +244,7 @@
     log('FINAL: chunks=' + chunks.length + ' blob.size=' + blob.size + ' frames=' + frames);
     log('=== done - please copy this text ===');
     video.muted = wasMuted;
-    clearInterval(iv);
+    if (raf !== null) cancelAnimationFrame(raf);
     cv.remove();
   });
 })();

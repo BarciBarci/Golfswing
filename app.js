@@ -918,15 +918,20 @@ function recordTrimmedRange(onProgress) {
     recCanvas.width = video.videoWidth || 1280;
     recCanvas.height = video.videoHeight || 720;
     // Firefox only delivers frames from canvas.captureStream() when the canvas
-    // is actually presented by the compositor. Off-screen canvases are culled
-    // in Firefox, so keep it inside the viewport but tiny and nearly invisible:
-    // the stream captures the canvas bitmap at full resolution regardless of
-    // its CSS size. Chrome delivers frames either way.
+    // is actually presented by the compositor: it must be visible on screen.
+    // Show a small live preview in the corner while recording – the stream
+    // still captures the canvas bitmap at full resolution. Chrome works either
+    // way, so the preview is harmless there too.
+    const preAR = recCanvas.height ? recCanvas.width / recCanvas.height : 0.75;
+    const preW = 135;
     recCanvas.style.cssText =
-      'position:fixed;top:0;right:0;width:2px;height:2px;' +
-      'opacity:0.01;pointer-events:none;z-index:2147483647;';
+      'position:fixed;bottom:12px;right:12px;' +
+      'width:' + preW + 'px;height:' + Math.round(preW / preAR) + 'px;' +
+      'border:2px solid var(--accent);border-radius:8px;background:#000;' +
+      'box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;' +
+      'z-index:2147483647;';
     document.body.appendChild(recCanvas);
-    let drawTimer = null;
+    let rafDraw = null;
     let rec = null;
     let mime = '';
     let chunks = [];
@@ -937,8 +942,10 @@ function recordTrimmedRange(onProgress) {
     let resolveTimer = null;
 
     const cleanup = () => {
-      if (drawTimer) clearInterval(drawTimer);
-      drawTimer = null;
+      if (rafDraw !== null) {
+        cancelAnimationFrame(rafDraw);
+        rafDraw = null;
+      }
       clearTimeout(overallTimeout);
       if (resolveTimer !== null) {
         clearTimeout(resolveTimer);
@@ -1070,10 +1077,16 @@ function recordTrimmedRange(onProgress) {
       };
       // Draw the first frame immediately: the frame at the trim start is now
       // actually displayed, so the recording can't begin with a stale frame.
-      recCanvas.getContext('2d').drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
-      drawTimer = setInterval(() => {
-        recCanvas.getContext('2d').drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
-      }, 33);
+      // Then keep drawing inside requestAnimationFrame: the canvas is presented
+      // in the same display cycle, which Firefox requires for captureStream.
+      const cctx = recCanvas.getContext('2d');
+      cctx.drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
+      const drawFn = () => {
+        if (settled) return;
+        cctx.drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
+        rafDraw = requestAnimationFrame(drawFn);
+      };
+      rafDraw = requestAnimationFrame(drawFn);
       try {
         rec.start(250);
         video.play().catch(() => settle(null, new Error('playback')));
