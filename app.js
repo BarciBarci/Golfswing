@@ -131,9 +131,9 @@ function onLoadedMetadata() {
     // (e.g. HEVC/H.265 from a phone camera, which Chrome on Linux cannot
     // play). Give clear feedback instead of a silently broken player.
     alert(
-      'This video cannot be decoded by your browser. It is probably an ' +
-      'unsupported format (e.g. HEVC/H.265 from a phone). Convert it to MP4 ' +
-      '(H.264) and load it again.'
+      'This video cannot be decoded by your browser (e.g. HEVC/H.265 from a ' +
+      'phone – Chrome on Linux cannot play it). Please load a video in ' +
+      'MP4/H.264 format instead (convert it first – see the README).'
     );
     resetToUpload();
     return;
