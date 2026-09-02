@@ -167,8 +167,7 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v
-UpdateCheckData:
-  android/gradle.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=([^\r\n]+)
+UpdateCheckData: android/gradle.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=([^\r\n]+)
 CurrentVersion: 1.0.0
 CurrentVersionCode: 1
 ```
