@@ -141,7 +141,7 @@ SourceCode: https://github.com/BarciBarci/Golfswing
 IssueTracker: https://github.com/BarciBarci/Golfswing/issues
 Changelog: https://github.com/BarciBarci/Golfswing/releases
 
-Auto Name: Golf Swing Analysis
+AutoName: Golf Swing Analysis
 Summary: Analyze golf swing videos offline in slow motion
 Description: |-
   Golf Swing Analysis plays back a swing video in slow motion (down to
@@ -167,9 +167,8 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v
-# Reihenfolge: erst versionCode-Datei+Regex, dann versionName (Datei "." =
-# gleiche Datei wie zuvor). Die Pfade sind relativ zum Repo-Root.
-UpdateCheckData: android/gradle.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=([^\r\n]+)
+UpdateCheckData:
+  android/gradle.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=([^\r\n]+)
 CurrentVersion: 1.0.0
 CurrentVersionCode: 1
 ```
