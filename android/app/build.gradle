@@ -56,6 +56,28 @@ tasks.whenTaskAdded { task ->
     }
 }
 
+// ---------------------------------------------------------------------------
+// F-Droid expects the release APK at the root of the build subdirectory it
+// builds in (<subdir>/build/outputs/apk/release/). Because this Android
+// project is a Gradle multi-module build (the APK is produced by the :app
+// module under app/build/...), the APK would not be found by F-Droid. After
+// every release build we therefore copy the APK to the expected location.
+// ---------------------------------------------------------------------------
+def fdroidApkDir = file('../build/outputs/apk/release')
+
+tasks.register('copyReleaseApkToFdroidLocation', Copy) {
+    from(layout.buildDirectory.dir('outputs/apk/release')) {
+        include '*.apk'
+    }
+    into fdroidApkDir
+}
+
+tasks.whenTaskAdded { task ->
+    if (task.name == 'assembleRelease') {
+        task.finalizedBy tasks.named('copyReleaseApkToFdroidLocation')
+    }
+}
+
 android {
     namespace 'io.github.barcibarci.golfswing'
     compileSdk 34
