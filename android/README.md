@@ -128,8 +128,15 @@ Ein Release-APK (unsigniert, für F-Droid irrelevant – F-Droid signiert selbst
 
 F-Droid baut Apps nicht aus diesem Repository, sondern aus dem separaten
 [f-droid/fdroiddata](https://gitlab.com/fdroid/fdroiddata)-Repository. Dafür
-wird dort einmalig eine Metadaten-Datei angelegt
-(`metadata/io.github.barcibarci.golfswing.yml`). Der Inhalt (Vorschlag):
+werden dort zwei Dinge angelegt:
+
+1. die Metadaten-Datei `metadata/io.github.barcibarci.golfswing.yml` und
+2. die übersetzbare Kurzbeschreibung als eigene Datei
+   `metadata/io.github.barcibarci.golfswing/en-US/summary.txt`
+   (fdroidserver verlangt, dass `Summary` nicht in der YAML steht, sondern in
+   dieser Datei – sonst schlägt der CI-Check `tools check scripts` fehl).
+
+Inhalt der YAML (Achtung: Datei muss mit einer Leerzeile enden!):
 
 ```yaml
 Categories:
@@ -142,7 +149,6 @@ IssueTracker: https://github.com/BarciBarci/Golfswing/issues
 Changelog: https://github.com/BarciBarci/Golfswing/releases
 
 AutoName: Golf Swing Analysis
-Summary: Analyze golf swing videos offline in slow motion
 Description: |-
   Golf Swing Analysis plays back a swing video in slow motion (down to
   0.1x), lets you trim it and draw lines and circles directly on the video
@@ -172,6 +178,13 @@ CurrentVersion: 1.0.0
 CurrentVersionCode: 1
 ```
 
+Inhalt der Datei `metadata/io.github.barcibarci.golfswing/en-US/summary.txt`
+(auch hier: abschließende Leerzeile nicht vergessen):
+
+```
+Analyze golf swing videos offline in slow motion
+```
+
 Vorgehen:
 
 1. Alle Änderungen (inkl. `android/`) nach GitHub pushen und den Release-Tag
@@ -186,11 +199,12 @@ Vorgehen:
    ```
 
 2. In das [fdroiddata-Repository](https://gitlab.com/fdroid/fdroiddata)
-   wechseln, dort `metadata/io.github.barcibarci.golfswing.yml` anlegen (Inhalt
-   wie oben – der erste Eintrag unter `Builds` referenziert den Tag
+   wechseln, dort `metadata/io.github.barcibarci.golfswing.yml` UND
+   `metadata/io.github.barcibarci.golfswing/en-US/summary.txt` anlegen (Inhalte
+   wie oben – der Eintrag unter `Builds` referenziert den Tag
    `android-v1.0.0`) und einen **Merge-Request** einreichen. Wer das nicht per
    GitLab machen möchte, kann stattdessen ein Issue im fdroiddata-Repo öffnen
-   und die YAML-Datei dort einfügen.
+   und die Dateien dort einfügen.
 
    Die F-Droid-Maintainer bauen die App dann testweise und nehmen sie nach
    erfolgreichem Build in den Katalog auf (Details: [Offizielle
