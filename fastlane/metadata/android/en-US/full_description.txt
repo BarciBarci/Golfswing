@@ -1,0 +1,18 @@
+Golf Swing Analysis plays back a swing video in slow motion (down to
+0.1x) and lets you draw lines and circles directly on the video to check
+your posture, spine angle, head position or swing path.
+
+Features:
+- Open a video from your device (MP4, WebM, MOV) or a .glf project
+- Trim the swing: cut off the start and the end before analyzing
+- Playback speed continuously adjustable from 0.1x to 1x
+- Single-frame stepping - tap once for one frame, press and hold to step
+  through frame by frame
+- Draw lines and circles in 9 colors directly on the video; move whole
+  shapes or single grips afterwards
+- Restrict each line/circle to a time window, adjust stroke width,
+  toggle visibility, undo
+- Save your work as a .glf project (video plus all overlays in one file)
+  and reopen it at any time; export/import overlays as JSON
+- Works fully offline - videos and projects never leave your device.
+  No Internet permission, no trackers, no analytics.

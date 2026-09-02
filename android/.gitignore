@@ -1,0 +1,18 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated APKs / outputs
+*.apk
+*.aab
+outputs/
+
+# Keystores must never be committed
+*.keystore
+*.jks

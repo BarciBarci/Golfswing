@@ -1,0 +1,96 @@
+plugins {
+    id 'com.android.application'
+}
+
+// ---------------------------------------------------------------------------
+// The web app (index.html, app.js, styles.css, sw.js, manifest.webmanifest,
+// icons/*.png) lives in the repository root and is the single source of truth
+// for the desktop/web version AND the Android app. Nothing is duplicated:
+// every Android build copies those files into the app's assets. If the files
+// are missing (e.g. because only the "android/" folder was checked out), the
+// build fails with a clear message.
+// ---------------------------------------------------------------------------
+
+def webAssetsSource = file('../..')   // <repo-root>/android/app/../.. = repository root
+def webAssetsOutput = layout.buildDirectory.dir('generated/webAssets')
+
+def webAppFiles = [
+    'index.html',
+    'app.js',
+    'styles.css',
+    'sw.js',
+    'manifest.webmanifest',
+    'icons/*.png',
+]
+
+// Android app version, read from android/gradle.properties (F-Droid uses these
+// values for update checks). Computed here – outside the android {} block – so
+// the casts are unambiguous in Groovy.
+def androidVersionCode = (project.findProperty('VERSION_CODE') ?: '1') as int
+def androidVersionName = (project.findProperty('VERSION_NAME') ?: '1.0.0') as String
+
+tasks.register('syncWebAssets', Sync) {
+    from(webAssetsSource) {
+        include webAppFiles
+    }
+    into webAssetsOutput
+
+    doFirst {
+        def required = ['index.html', 'app.js', 'styles.css']
+        required.each { name ->
+            def f = new File(webAssetsSource, name)
+            if (!f.isFile()) {
+                throw new GradleException(
+                    "Web app file not found: ${f}\n" +
+                    'The Android app embeds the web app from the repository root. ' +
+                    'Build from a full checkout of the repository (the "android" folder alone is not enough).')
+            }
+        }
+    }
+}
+
+// Ensure the web assets exist before the assets are packaged.
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+        task.dependsOn tasks.named('syncWebAssets')
+    }
+}
+
+android {
+    namespace 'io.github.barcibarci.golfswing'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.barcibarci.golfswing'
+        minSdk 26
+        targetSdk 34
+        versionCode androidVersionCode
+        versionName androidVersionName
+    }
+
+    sourceSets {
+        main {
+            // Generated web assets + committed native-only assets
+            // (e.g. injected/download-hook.js). No name conflicts.
+            assets.srcDirs += [webAssetsOutput.get().asFile, 'src/main/assets']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // The APK is signed by F-Droid when it is published there. For a
+            // manual sideload build, configure signingConfigs locally.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}

@@ -72,6 +72,18 @@ Once the project is pushed to GitHub, the page is available
 anywhere via `https://BarciBarci.github.io/Golfswing/` – no computer in the
 same Wi-Fi needed. „Add to Home Screen“ works there the same way.
 
+## Android app (F-Droid)
+
+In addition to the desktop/web version, the repository contains a complete
+**Android app** in the `android/` folder. It is a small wrapper that embeds
+exactly these web files (no copy – the files above stay the single source of
+truth) and can be published on **F-Droid**. It runs fully offline and needs no
+Internet permission. Videos and `.glf` projects are opened via the system file
+picker and saved to `Downloads/GolfSwingAnalysis/`.
+
+→ Build instructions, release process and the F-Droid metadata template are in
+[`android/README.md`](android/README.md).
+
 
 ## Run locally
 
@@ -106,6 +118,7 @@ Golfswing/
 ├── styles.css   # Styling (dark theme, mobile-optimized)
 ├── app.js       # Logic: video, trim, speed, drawing, .glf
 ├── LICENSE      # MIT license
+├── android/     # Android wrapper for F-Droid (see android/README.md)
 └── README.md
 ```
 

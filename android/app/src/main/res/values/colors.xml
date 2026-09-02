@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the dark background of the web app (theme_color in
+         manifest.webmanifest and the background color used in styles.css). -->
+    <color name="ic_launcher_background">#0f1115</color>
+</resources>

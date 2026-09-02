@@ -1,0 +1,3 @@
+Initial release: Golf Swing Analysis as an offline Android app. Play back
+swing videos in slow motion, step through frame by frame, draw lines and
+circles on the video and save everything as a .glf project.

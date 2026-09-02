@@ -1,0 +1,7 @@
+// Root build file of the standalone Android wrapper project.
+// The Android app lives completely inside the "android/" folder; it only
+// reads the web app files (index.html, app.js, …) from the repository root
+// when it builds (see :app syncWebAssets). Those files are never modified.
+plugins {
+    id 'com.android.application' version '8.3.2' apply false
+}
