@@ -113,8 +113,6 @@ Ein Release-APK (unsigniert, für F-Droid irrelevant – F-Droid signiert selbst
    git tag android-v1.0.0
    git push origin main --tags
    ```
-
-   (Erste Android-Version ist aktuell `1.0.0` → Tag `android-v1.0.0`.)
 3. Optional Launcher-Icons neu erzeugen, falls sich `icons/icon-512.png`
    geändert hat:
 
@@ -122,21 +120,62 @@ Ein Release-APK (unsigniert, für F-Droid irrelevant – F-Droid signiert selbst
    python3 android/tools/make_icons.py
    ```
 
+### Reproducible Build (Signieren + Hochladen)
+
+F-Droid signiert bei aktiviertem Reproducible Build die APK mit *deinem*
+Schlüssel. Dafür ist einmalig ein Signaturschlüssel nötig und pro Release eine
+signierte APK, die du hochlädst:
+
+1. **Schlüssel einmalig erzeugen** (nur beim ersten Mal, danach immer
+   wiederverwenden!):
+
+   ```sh
+   mkdir -p android/keystore
+   # Passwort sicher wählen/merken
+   keytool -genkeypair -keystore android/keystore/golfswing-release.jks \
+     -alias golfswing -keyalg RSA -keysize 4096 -validity 10000 \
+     -dname "CN=Golf Swing Analysis, O=BarciBarci, C=DE"
+   ```
+
+   ⚠️ **`android/keystore/` ist in `.gitignore` und wird niemals committet.**
+   Bewahre Schlüsseldatei **und** Passwort an einem sicheren Ort auf (USB-Stick/
+   Passwortmanager). Wer den Schlüssel verliert, kann keine Updates mehr mit
+   derselben Signatur ausliefern.
+
+2. **Pro Release** die signierte APK bauen und auf GitHub Releases hochladen
+   (Tag `android-vX.Y.Z`, Datei z. B. `golf-swing-analysis-X.Y.Z.apk`):
+
+   ```sh
+   cd android && ./gradlew assembleRelease
+   APK=../golf-swing-analysis-<version>.apk
+   /pfad/zu/apksigner sign --ks keystore/golfswing-release.jks \
+     --ks-key-alias golfswing --out "$APK" \
+     app/build/outputs/apk/release/app-release-unsigned.apk
+   ```
+
+   Der Zertifikat-Fingerprint (einmalig ermitteln) gehört in die
+   fdroiddata-Metadaten als `AllowedAPKSigningKeys`:
+
+   ```sh
+   apksigner verify --print-certs golf-swing-analysis-1.0.0.apk | grep SHA-256
+   ```
+
+3. In den fdroiddata-Metadaten `Binaries` und `AllowedAPKSigningKeys` pflegen
+   (siehe Vorlage unten).
+
 ---
 
 ## Zu F-Droid hinzufügen
 
 F-Droid baut Apps nicht aus diesem Repository, sondern aus dem separaten
-[f-droid/fdroiddata](https://gitlab.com/fdroid/fdroiddata)-Repository. Dafür
-werden dort zwei Dinge angelegt:
+[f-droid/fdroiddata](https://gitlab.com/fdroid/fdroiddata)-Repository. Dort wird
+**nur** die Build-Metadaten-Datei `metadata/io.github.barcibarci.golfswing.yml`
+angelegt. Summary/Beschreibung/Bilder gehören **nicht** nach fdroiddata,
+sondern in dieses Repo unter `fastlane/` (dort liegen sie bereits und werden
+beim Build automatisch übernommen).
 
-1. die Metadaten-Datei `metadata/io.github.barcibarci.golfswing.yml` und
-2. die übersetzbare Kurzbeschreibung als eigene Datei
-   `metadata/io.github.barcibarci.golfswing/en-US/summary.txt`
-   (fdroidserver verlangt, dass `Summary` nicht in der YAML steht, sondern in
-   dieser Datei – sonst schlägt der CI-Check `tools check scripts` fehl).
-
-Inhalt der YAML (Achtung: Datei muss mit einer Leerzeile enden!):
+Inhalt der YAML (Achtung: Datei muss mit einer Leerzeile enden! Werte wie den
+`commit`-Hash, `Binaries` und `AllowedAPKSigningKeys` pro Release anpassen):
 
 ```yaml
 Categories:
@@ -147,26 +186,16 @@ WebSite: https://BarciBarci.github.io/Golfswing/
 SourceCode: https://github.com/BarciBarci/Golfswing
 IssueTracker: https://github.com/BarciBarci/Golfswing/issues
 Changelog: https://github.com/BarciBarci/Golfswing/releases
+Binaries: https://github.com/BarciBarci/Golfswing/releases/download/android-v%v/golf-swing-analysis-%v.apk
 
 AutoName: Golf Swing Analysis
-Description: |-
-  Golf Swing Analysis plays back a swing video in slow motion (down to
-  0.1x), lets you trim it and draw lines and circles directly on the video
-  to check posture, spine angle, head position or swing path. Lines and
-  circles can be limited to a time window, projects can be saved as .glf
-  files together with the video and reopened at any time.
-
-  The app is an offline wrapper around the open-source static web app.
-  Videos and projects never leave the device - no Internet permission, no
-  trackers, no analytics.
-
 RepoType: git
 Repo: https://github.com/BarciBarci/Golfswing
 
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: android-v1.0.0
+    commit: <voller Commit-Hash des Release, z. B. 936828965ce787153007a53d510ad5dd471e44e1>
     subdir: android
     gradle:
       - yes
@@ -176,14 +205,13 @@ UpdateCheckMode: Tags ^android-v
 UpdateCheckData: android/gradle.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=([^\r\n]+)
 CurrentVersion: 1.0.0
 CurrentVersionCode: 1
+AllowedAPKSigningKeys: <sha256-Fingerprint des Signaturzertifikats, siehe unten>
 ```
 
-Inhalt der Datei `metadata/io.github.barcibarci.golfswing/en-US/summary.txt`
-(auch hier: abschließende Leerzeile nicht vergessen):
-
-```
-Analyze golf swing videos offline in slow motion
-```
+(`AllowedAPKSigningKeys` und `Binaries` aktivieren den [Reproducible
+Build](https://f-droid.org/docs/Reproducible_Builds) – die hochgeladene, mit
+eigenem Schlüssel signierte APK muss zum GitHub-Release-Asset passen, das unter
+`Binaries` angegeben ist.)
 
 Vorgehen:
 
@@ -199,12 +227,11 @@ Vorgehen:
    ```
 
 2. In das [fdroiddata-Repository](https://gitlab.com/fdroid/fdroiddata)
-   wechseln, dort `metadata/io.github.barcibarci.golfswing.yml` UND
-   `metadata/io.github.barcibarci.golfswing/en-US/summary.txt` anlegen (Inhalte
-   wie oben – der Eintrag unter `Builds` referenziert den Tag
-   `android-v1.0.0`) und einen **Merge-Request** einreichen. Wer das nicht per
-   GitLab machen möchte, kann stattdessen ein Issue im fdroiddata-Repo öffnen
-   und die Dateien dort einfügen.
+   wechseln, dort `metadata/io.github.barcibarci.golfswing.yml` anlegen (Inhalt
+   wie oben – der Eintrag unter `Builds` referenziert das Release-Commit) und
+   einen **Merge-Request** einreichen. Wer das nicht per GitLab machen möchte,
+   kann stattdessen ein Issue im fdroiddata-Repo öffnen und die YAML-Datei dort
+   einfügen.
 
    Die F-Droid-Maintainer bauen die App dann testweise und nehmen sie nach
    erfolgreichem Build in den Katalog auf (Details: [Offizielle

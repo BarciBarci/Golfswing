@@ -16,3 +16,6 @@ outputs/
 # Keystores must never be committed
 *.keystore
 *.jks
+
+# Release signing key + passwords (local only – back them up securely!)
+/keystore/
