@@ -191,6 +191,8 @@ Binaries: https://github.com/BarciBarci/Golfswing/releases/download/android-v%v/
 AutoName: Golf Swing Analysis
 RepoType: git
 Repo: https://github.com/BarciBarci/Golfswing
+Binaries:
+  https://github.com/BarciBarci/Golfswing/releases/download/android-v%v/golf-swing-analysis-%v.apk
 
 Builds:
   - versionName: 1.0.0
