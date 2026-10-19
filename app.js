@@ -1,5 +1,8 @@
 'use strict';
 
+// App version – keep in sync with CHANGELOG.md and the git tag.
+const APP_VERSION = '1.1.0';
+
 /* ============================================================
  * Golf Swing Analysis
  * Load a video, play it back in slow motion and overlay lines
@@ -1607,6 +1610,9 @@ function onKeydown(e) {
 
 // ---------- Initialization ----------
 function init() {
+  const versionEl = $('app-version');
+  if (versionEl) versionEl.textContent = 'v' + APP_VERSION;
+
   buildColorRow();
 
   chooseFileBtn.addEventListener('click', () => videoInput.click());

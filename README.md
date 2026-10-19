@@ -8,6 +8,10 @@ The app is a pure **static website** (HTML/CSS/JavaScript, no build step) – it
 runs locally in the browser, on desktop as well as on iPhone/iPad (iOS) and
 Android. **Nothing is uploaded**; all data stays on your device.
 
+**Current version: 1.1.0** – see [CHANGELOG.md](CHANGELOG.md) for the version
+history. The version is shown in the footer of the app and maintained in
+`app.js` (`APP_VERSION`).
+
 ## Features
 
 - 📂 **Open video** by click or drag & drop (MP4/WebM/MOV, etc.)
