@@ -685,3 +685,15 @@ input[type="range"]::-moz-range-thumb {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---------- Drawing toolbar on phones (moved below the video) ---------- */
+.toolbar.toolbar-flow {
+  position: static;
+  width: 100%;
+  max-width: none;
+  margin: 0 0 6px;
+  justify-content: center;
+  background: var(--panel);
+}
+
+.toolbar.toolbar-flow .tool-btn:hover { background: rgba(255, 255, 255, 0.08); }

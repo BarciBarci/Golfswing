@@ -40,6 +40,7 @@ const speedValue = $('speed-value');
 const thicknessSlider = $('thickness-slider');
 const thicknessValue = $('thickness-value');
 const scrubber = $('scrubber');
+const scrubberRow = document.querySelector('.scrubber-row');
 
 const overlayToggle = $('overlay-toggle');
 const overlayContent = $('overlay-content');
@@ -148,6 +149,7 @@ function onLoadedMetadata() {
     const p = pendingGlf;
     pendingGlf = null;
     applyGlfProject(p.meta);
+    primeVideoFrame();
     return;
   }
   setMode('trim'); // trim first, then analyze
@@ -157,10 +159,46 @@ function onLoadedMetadata() {
   if (video.currentTime === 0 && isFinite(video.duration)) {
     video.currentTime = 0.001; // force decode so the first frame is shown
   }
+  primeVideoFrame();
+}
+
+// iOS Safari does not paint a video frame until the video has been played
+// once – loading metadata or seeking alone leaves the video area black, and
+// the timeline shows no frames while dragging. Playing muted and pausing right
+// away unlocks rendering, so the first frame and every later seek are visible.
+// Harmless in other browsers (no sound, the video stays paused).
+function primeVideoFrame() {
+  const wasMuted = video.muted;
+  const start = isFinite(state.trim.start) ? state.trim.start : 0;
+  video.muted = true;
+  const done = () => {
+    try {
+      video.pause();
+    } catch (err) {
+      /* ignore */
+    }
+    try {
+      video.currentTime = start;
+    } catch (err) {
+      /* ignore */
+    }
+    video.muted = wasMuted;
+  };
+  const p = video.play();
+  if (p && typeof p.then === 'function') {
+    p.then(done).catch(() => {
+      video.muted = wasMuted;
+    });
+  } else {
+    done();
+  }
 }
 
 function fitStage() {
-  const maxH = Math.max(240, window.innerHeight * 0.78);
+  const inFlow = toolbar.classList.contains('toolbar-flow');
+  const maxH = inFlow
+    ? Math.max(200, window.innerHeight * 0.70)
+    : Math.max(240, window.innerHeight * 0.78);
   const maxW = stage.parentElement.clientWidth;
   let width = maxW;
   let height = width / state.ar;
@@ -895,7 +933,10 @@ function seekAndWait(target, done) {
 // recorded video or rejects with an error.
 function recordTrimmedRange(onProgress) {
   return new Promise((resolve, reject) => {
-    if (typeof MediaRecorder === 'undefined' || typeof video.captureStream !== 'function') {
+    if (
+      typeof MediaRecorder === 'undefined' ||
+      (typeof video.captureStream !== 'function' && typeof canvas.captureStream !== 'function')
+    ) {
       reject(new Error('unsupported'));
       return;
     }
@@ -919,6 +960,9 @@ function recordTrimmedRange(onProgress) {
     // gesture is blocked. (The recording is video-only anyway.)
     video.muted = true;
 
+    let recCanvas = null; // canvas fallback for browsers without video.captureStream
+    let rafDraw = null;
+    let drawTimer = null;
     let rec = null;
     let mime = '';
     let chunks = [];
@@ -929,11 +973,20 @@ function recordTrimmedRange(onProgress) {
     let resolveTimer = null;
 
     const cleanup = () => {
+      if (drawTimer !== null) {
+        clearInterval(drawTimer);
+        drawTimer = null;
+      }
+      if (rafDraw !== null) {
+        cancelAnimationFrame(rafDraw);
+        rafDraw = null;
+      }
       clearTimeout(overallTimeout);
       if (resolveTimer !== null) {
         clearTimeout(resolveTimer);
         resolveTimer = null;
       }
+      if (recCanvas && recCanvas.parentNode) recCanvas.parentNode.removeChild(recCanvas);
       video.removeEventListener('ended', onEnded);
       video.muted = wasMuted;
     };
@@ -1039,12 +1092,34 @@ function recordTrimmedRange(onProgress) {
     seekAndWait(s, () => {
       if (settled) return;
       // Create the stream only now: the video sits at the trim start and is
-      // about to play. Keep only the video track, so no audio is mixed in.
-      let src;
+      // about to play. Prefer the video element's own stream (reliable in
+      // Chrome and Firefox). Safari has no HTMLMediaElement.captureStream, so
+      // fall back to capturing a canvas that shows the video.
+      let src = null;
       try {
-        src = new MediaStream(video.captureStream(30).getVideoTracks());
+        if (typeof video.captureStream === 'function') {
+          src = new MediaStream(video.captureStream(30).getVideoTracks());
+        } else if (typeof canvas.captureStream === 'function') {
+          recCanvas = document.createElement('canvas');
+          recCanvas.width = video.videoWidth || 1280;
+          recCanvas.height = video.videoHeight || 720;
+          const car = recCanvas.height ? recCanvas.width / recCanvas.height : 0.75;
+          const pw = 135;
+          recCanvas.style.cssText =
+            'position:fixed;bottom:12px;right:12px;' +
+            'width:' + pw + 'px;height:' + Math.round(pw / car) + 'px;' +
+            'border:2px solid var(--accent);border-radius:8px;background:#000;' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;' +
+            'z-index:2147483647;';
+          document.body.appendChild(recCanvas);
+          src = recCanvas.captureStream(30);
+        }
       } catch (err) {
         settle(null, err);
+        return;
+      }
+      if (!src) {
+        settle(null, new Error('unsupported'));
         return;
       }
       mime = pickMime();
@@ -1062,6 +1137,28 @@ function recordTrimmedRange(onProgress) {
         }
         finish();
       };
+      if (recCanvas) {
+        // Canvas fallback: keep drawing the video into the canvas, both on a
+        // fixed interval and inside requestAnimationFrame (some browsers only
+        // feed presented canvases to captureStream).
+        const cctx = recCanvas.getContext('2d');
+        const drawFn = () => {
+          if (settled) return;
+          try {
+            cctx.drawImage(video, 0, 0, recCanvas.width, recCanvas.height);
+          } catch (err) {
+            /* frame not ready yet */
+          }
+        };
+        drawFn();
+        const rafLoop = () => {
+          if (settled) return;
+          drawFn();
+          rafDraw = requestAnimationFrame(rafLoop);
+        };
+        rafDraw = requestAnimationFrame(rafLoop);
+        drawTimer = setInterval(drawFn, 33);
+      }
       try {
         rec.start(250);
         video.play().catch(() => settle(null, new Error('playback')));
@@ -1075,7 +1172,10 @@ function recordTrimmedRange(onProgress) {
 
 function exportTrimmedVideo() {
   if (state.recording) return;
-  if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
+  if (
+    typeof MediaRecorder === 'undefined' ||
+    (typeof video.captureStream !== 'function' && typeof canvas.captureStream !== 'function')
+  ) {
     trimStatus.hidden = false;
     trimStatus.textContent =
       'Saving is not supported by this browser – just use “Apply & Analyze”.';
@@ -1330,7 +1430,10 @@ async function saveGlf() {
 
   if (needsTrim) {
     // Embed the trimmed video instead of the full one
-    if (typeof MediaRecorder === 'undefined' || typeof canvas.captureStream !== 'function') {
+    if (
+      typeof MediaRecorder === 'undefined' ||
+      (typeof video.captureStream !== 'function' && typeof canvas.captureStream !== 'function')
+    ) {
       alert(
         'Embedding the trimmed video needs recording support, which this browser lacks. ' +
         'Use “Save as file” first and then continue with the trimmed video.'
@@ -1663,6 +1766,28 @@ function init() {
 
   document.addEventListener('keydown', onKeydown);
   window.addEventListener('resize', fitStage);
+
+  // On phones the drawing toolbar moves below the video so it does not cover
+  // the picture. On desktop it stays an overlay on the video.
+  const phoneQuery = window.matchMedia('(max-width: 600px)');
+  const placeToolbar = () => {
+    if (phoneQuery.matches) {
+      if (toolbar.parentElement === stage) {
+        stage.parentNode.insertBefore(toolbar, scrubberRow);
+        toolbar.classList.add('toolbar-flow');
+      }
+    } else if (toolbar.parentElement !== stage) {
+      stage.appendChild(toolbar);
+      toolbar.classList.remove('toolbar-flow');
+    }
+    fitStage();
+  };
+  if (typeof phoneQuery.addEventListener === 'function') {
+    phoneQuery.addEventListener('change', placeToolbar);
+  } else if (typeof phoneQuery.addListener === 'function') {
+    phoneQuery.addListener(placeToolbar);
+  }
+  placeToolbar();
 
   // Desktop: list open by default, mobile: collapsed
   if (window.matchMedia('(min-width: 901px)').matches) {
